@@ -1,10 +1,5 @@
 import numpy as np
 import sounddevice as sd
-import matplotlib.pyplot as plt
-from scipy.signal import find_peaks
-import argparse
-import random
-from binary_code import generate_binary_password, detect_binary_knocks, decode_knocks, plot_detection, check_binary_password
 
 # Global variables
 recording = None
@@ -53,46 +48,3 @@ def record_audio(duration, channels=1, device=None):
     # Trim recording to actual length
     recording = recording[:accu_frames]
     return recording
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Binary knock detection system.')
-    parser.add_argument('--list-devices', action='store_true', help='List audio devices')
-    parser.add_argument('--input-device', type=int_or_str, help='Input device ID')
-    parser.add_argument('-c', '--channels', type=int, default=1, help='Number of channels')
-    parser.add_argument('-t', '--threshold', type=float, default=0.5, help='Detection threshold (0-1)')
-    parser.add_argument('-d', '--duration', type=float, default=5.0, help='Recording duration')
-    args = parser.parse_args()
-
-    if args.list_devices:
-        print(sd.query_devices())
-        exit()
-
-    password, knock_password = generate_binary_password()
-    print(f"\nKnock detection password: {knock_password}")
-
-    # Update parameters from command line
-    threshold = args.threshold
-    fs = 44100  # Fixed sample rate for consistent detection
-
-    # Record audio
-    audio_data = record_audio(args.duration, args.channels, args.input_device)
-
-    # Process each channel
-    for channel in range(audio_data.shape[1]):
-        # Detect knocks
-        knocks = detect_binary_knocks(audio_data, channel)
-
-        # Decode to binary
-        binary_str, durations = decode_knocks(knocks)
-
-        print(check_binary_password(password, binary_str))
-
-        print(f"\nChannel {channel+1} Results:")
-        print(f"Detected {len(knocks)} knocks")
-        print(f"Binary sequence: {binary_str}")
-        print(f"Durations (seconds): {durations}")
-
-        # Plot results
-        plot_detection(audio_data, knocks, channel)
-        print(f"Detection plot saved to binary_detection_ch{channel+1}.png")

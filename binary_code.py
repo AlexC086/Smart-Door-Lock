@@ -13,7 +13,7 @@ from play_and_record import int_or_str, audio_callback, record_audio
 # Global variables
 recording = None
 fs = 44100  # Sample rate
-threshold = 0.5  # Amplitude threshold for detection
+threshold = 0.3  # Amplitude threshold for detection
 min_silence = 0.1  # Minimum silence duration between knocks (seconds)
 min_knock_duration = 0.05  # Minimum knock duration (seconds)
 bit_threshold = 0.6  # Silence duration threshold for 0/1 (seconds)

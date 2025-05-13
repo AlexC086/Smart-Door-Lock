@@ -1,4 +1,3 @@
-import random
 import datetime
 import json
 import os
@@ -17,35 +16,33 @@ fs = 44100  # Sample rate
 threshold = 0.5  # Amplitude threshold for detection
 min_silence = 0.1  # Minimum silence duration between knocks (seconds)
 min_knock_duration = 0.05  # Minimum knock duration (seconds)
-bit_threshold = 0.8  # Silence duration threshold for 0/1 (seconds)
-
-
-def int_or_str(text):
-    """Helper function for argument parsing."""
-    try:
-        return int(text)
-    except ValueError:
-        return text
+bit_threshold = 0.6  # Silence duration threshold for 0/1 (seconds)
 
 
 def generate_binary_password(filename="binary_password.json"):
     random_number = random.randint(0, 63)
     password = f"{random_number:06b}"  # 6-bit binary string
-    knock_password = password.replace('0', '.').replace('1', '_') + "."
+    knock_password = password.replace('0', '. ').replace('1', '_ ') + "."
     current_time = datetime.datetime.now()
-
-    data = {
-        "password": password,
-        "knock_password": knock_password,
-        "creation_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
-        "expiration_time": None
-    }
+    current_id = 1
 
     # Load existing data (if file exists)
     existing_data = []
     if os.path.exists(filename):
         with open(filename, 'r') as f:
             existing_data = json.load(f)
+        if existing_data:
+            current_id = existing_data[-1].get('id') + 1
+
+
+    data = {
+        "id": current_id,
+        "password": password,
+        "knock_password": knock_password,
+        "creation_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
+        "expiration_time": None,
+        "deletion_time": None,
+    }
 
     # Append new password
     existing_data.append(data)
@@ -171,14 +168,41 @@ def record_audio(duration, channels=1, device=None):
     return recording
 
 
+def start_recording_knocks():
+    password, knock_password = generate_binary_password()
+    print(f"\nKnock detection password: {knock_password}")
+
+    # Record audio
+    audio_data = record_audio(duration=10, channels=1, device=None)
+
+    # Detect knocks
+    knocks = detect_knocks(audio_data, 0)
+
+    # Decode to binary based on silence between knocks
+    binary_str, durations = decode_knocks(knocks)
+
+    unlock = check_binary_password(password, binary_str)
+    print(unlock)
+
+    print(f"\nResults:")
+    print(f"Detected {len(knocks)} knocks")
+    print(f"Binary sequence: {binary_str}")
+    print(f"Silence durations between knocks (seconds): {durations}")
+
+    # Plot results
+    # plot_detection(audio_data, knocks, binary_str, 0)
+    # print(f"Detection plot saved to binary_detection_ch1.png")
+
+    return unlock
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Binary knock detection system.')
     parser.add_argument('--list-devices', action='store_true', help='List audio devices')
     parser.add_argument('--input-device', type=int_or_str, help='Input device ID')
     parser.add_argument('-c', '--channels', type=int, default=1, help='Number of channels')
     parser.add_argument('-t', '--threshold', type=float, default=0.5, help='Detection threshold (0-1)')
-    parser.add_argument('-d', '--duration', type=float, default=5.0, help='Recording duration')
-    parser.add_argument('-b', '--bit-threshold', type=float, default=0.5,
+    parser.add_argument('-d', '--duration', type=float, default=10.0, help='Recording duration')
+    parser.add_argument('-b', '--bit-threshold', type=float, default=0.6,
                         help='Silence duration threshold for 0/1 (seconds)')
     args = parser.parse_args()
 

@@ -25,7 +25,7 @@ def generate_binary_password(filename="binary_password.json"):
         "password": password,
         "knock_password": knock_password,
         "creation_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
-        "expiration_time": (current_time + datetime.timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S"),
+        "expiration_time": None
     }
 
     # Load existing data (if file exists)
@@ -33,13 +33,6 @@ def generate_binary_password(filename="binary_password.json"):
     if os.path.exists(filename):
         with open(filename, 'r') as f:
             existing_data = json.load(f)
-
-        # Invalidate old passwords (set expiration_time to now if not yet expired)
-        if existing_data:
-            last_entry = existing_data[-1]
-            entry_exp_time = datetime.datetime.strptime(last_entry["expiration_time"], "%Y-%m-%d %H:%M:%S")
-            if entry_exp_time > current_time:
-                last_entry["expiration_time"] = current_time.strftime("%Y-%m-%d %H:%M:%S")
 
     # Append new password
     existing_data.append(data)
@@ -83,7 +76,7 @@ def detect_binary_knocks(audio_data, channel=0):
     return knocks
 
 
-def decode_binary_knocks(knocks):
+def decode_knocks(knocks):
     if len(knocks) < 2:
         return "", []
 

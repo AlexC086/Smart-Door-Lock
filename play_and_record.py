@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 import argparse
 import random
-from binary_code import generate_binary_password, detect_binary_knocks, decode_binary_knocks, plot_detection, check_binary_password
+from binary_code import generate_binary_password, detect_binary_knocks, decode_knocks, plot_detection, check_binary_password
 
 # Global variables
 recording = None
@@ -84,7 +84,7 @@ if __name__ == '__main__':
         knocks = detect_binary_knocks(audio_data, channel)
 
         # Decode to binary
-        binary_str, durations = decode_binary_knocks(knocks)
+        binary_str, durations = decode_knocks(knocks)
 
         print(check_binary_password(password, binary_str))
 

@@ -171,6 +171,12 @@ def record_audio(duration, channels=1, device=None):
 def start_recording_knocks():
     current_time = datetime.datetime.now()
     valid_passwords = []
+
+    # Check if file exists
+    if not os.path.exists(filename):
+        # Create the file with empty JSON object
+        with open(filename, 'w') as f:
+            json.dump({}, f)
     with open('binary_password.json') as f:
         data = json.load(f)
 

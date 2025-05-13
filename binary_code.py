@@ -22,7 +22,7 @@ bit_threshold = 0.6  # Silence duration threshold for 0/1 (seconds)
 def generate_binary_password(filename="binary_password.json"):
     random_number = random.randint(0, 63)
     password = f"{random_number:06b}"  # 6-bit binary string
-    knock_password = password.replace('0', '. ').replace('1', '_ ') + "."
+    knock_password = password.replace('0', '. ').replace('1', '. _ ') + "."
     current_time = datetime.datetime.now()
     current_id = 1
 
@@ -169,8 +169,23 @@ def record_audio(duration, channels=1, device=None):
 
 
 def start_recording_knocks():
-    password, knock_password = generate_binary_password()
-    print(f"\nKnock detection password: {knock_password}")
+    current_time = datetime.datetime.now()
+    valid_passwords = []
+    with open('binary_password.json') as f:
+        data = json.load(f)
+
+    for item in data:
+        if item["expiration_time"] is None:
+            valid_passwords.append(item["password"])
+        else:
+            expiration_time = item["expiration_time"]
+            if expiration_time > current_time.strftime("%Y-%m-%d %H:%M:%S"):
+                valid_passwords.append(item["password"])
+
+    if valid_passwords == []:
+        password, knock_password = generate_binary_password()
+        # print(f"\nKnock detection password: {knock_password}")
+        valid_passwords.append(password)
 
     # Record audio
     audio_data = record_audio(duration=10, channels=1, device=None)
@@ -181,7 +196,21 @@ def start_recording_knocks():
     # Decode to binary based on silence between knocks
     binary_str, durations = decode_knocks(knocks)
 
-    unlock = check_binary_password(password, binary_str)
+    unlock = False
+    for password in valid_passwords:
+        unlock = check_binary_password(password, binary_str)
+        if unlock:
+            with open('binary_password.json') as f:
+                data = json.load(f)
+
+            for item in data:
+                # Make the password expire after use
+                if item["password"] == password:
+                    item["expiration_time"] = current_time.strftime("%Y-%m-%d %H:%M:%S")
+                    item["deletion_time"] = current_time.strftime("%Y-%m-%d %H:%M:%S")
+
+            break
+
     print(unlock)
 
     print(f"\nResults:")

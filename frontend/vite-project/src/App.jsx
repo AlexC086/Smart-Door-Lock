@@ -76,7 +76,33 @@ function App() {
         };
     }
   }
-  
+
+  // Call backend to generate binary code
+  const generate_binary_code = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/generate_binary_password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // body: JSON.stringify({}) // If you need to send data
+      });
+
+      if (response.ok) {
+        let data = await response.json();
+        let password = data.password;
+        let knock_password = data.knock_password;
+        console.log(password);
+        console.log(knock_password);
+        return password, knock_password
+      }
+    } catch (error) {
+      console.error('Error generating Morse code:', error);
+      // Handle error (show notification, etc.)
+    }
+  }
+
+
   // Add new pass
   const addNewPass = (type) => {
     const newPass = {
@@ -85,6 +111,20 @@ function App() {
       type: type,
       expiryTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().substring(0, 16) // Default 1 week
     };
+
+
+    // See if you need this part
+    switch (activeMethod){
+      case "morse":
+        let password = "";
+        let knock_password = "";
+        password, knock_password = generate_binary_code();
+        break;
+
+      default:
+        break;
+    }
+
     
     setPasses([...passes, newPass]);
     setEditingPass(newPass);

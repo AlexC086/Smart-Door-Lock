@@ -3,3 +3,5 @@ sounddevice
 matplotlib
 scipy
 opencv-python
+fastapi
+uvicorn

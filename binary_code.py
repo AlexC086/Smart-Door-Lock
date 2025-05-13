@@ -175,7 +175,7 @@ def start_recording_knocks():
     # Check if file exists
     if not os.path.exists(filename):
         # Create the file with empty JSON object
-        with open(filename, 'w') as f:
+        with open('binary_password.json', 'w') as f:
             json.dump({}, f)
     with open('binary_password.json') as f:
         data = json.load(f)

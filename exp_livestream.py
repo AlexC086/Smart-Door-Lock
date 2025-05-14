@@ -20,8 +20,8 @@ sleep(2)  # Allow camera to warm up
 
 # Load pre-trained MobileNet SSD model for object detection
 net = cv2.dnn.readNetFromCaffe(
-    "MobileNetSSD_deploy.prototxt",
-    "MobileNetSSD_deploy.caffemodel"
+    "MobileNet-SSD/deploy.prototxt",
+    "MobileNet-SSD/mobilenet_iter_73000.caffemodel"
 )
 CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
            "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
@@ -48,7 +48,7 @@ def detect_objects(frame):
             (startX, startY, endX, endY) = box.astype("int")
             
             # Draw bounding box and label
-            label = f"{CLASSES[idx]}: {confidence:.2f}%"
+            label = f"{CLASSES[idx]}: {confidence*100:.2f}%"
             cv2.rectangle(frame, (startX, startY), (endX, endY), COLORS[idx], 2)
             y = startY - 15 if startY - 15 > 15 else startY + 15
             cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)

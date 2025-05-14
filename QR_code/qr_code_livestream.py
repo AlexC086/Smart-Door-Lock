@@ -14,7 +14,7 @@ import qrcode
 QR_DATABASE = "qr_codes.json"
 QR_CODE_DIR = "qr_codes"
 PASSWORD_LENGTH = 32
-FASTAPI_STREAM_URL = "http://localhost:5000/?action=stream"  # FastAPI stream endpoint
+FASTAPI_STREAM_URL = "http://localhost:8080/video_feed"  # FastAPI stream endpoint
 
 def initialize_database():
     """Create an empty database if it doesn't exist"""

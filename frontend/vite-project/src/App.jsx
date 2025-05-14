@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import './App.css'
 
 const RASPBERRY_PI_IP = "192.168.50.190"; // ← EDIT THIS
-const STREAM_PORT = "5000";
+const STREAM_PORT = "8080";
 const STREAM_URL = `http://${RASPBERRY_PI_IP}:${STREAM_PORT}/video_feed`;
 function App() {
   // Get current date in local string format

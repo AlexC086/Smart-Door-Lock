@@ -223,36 +223,43 @@ function App() {
     return parseMorseUnits(morseString).length;
   };
 
-  /* Morse Code related API*/
-  const get_morse_database = async () => {
+  /* APIs */
+  const update_database = async () => {
     try {
-      const response = await fetch('http://localhost:8000/get_morse_database', {
+      const response = await fetch('http://localhost:8000/update_database', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }});
+        },
+        body: JSON.stringify({
+          method: activeMethod,
+        })});
 
       if (response.ok) {
         let data = await response.json();
-        const newPasses = data.map(item => ({
-          id: item.id,
-          name: item.name,
-          type: 'one-time',
-          expiryTime: item.expiration_time,
-          morsePassword: item.knock_password,
-          binaryPassword: item.password,
-          knockPassword: item.knock_password.substring(0, morsePassword.length-1),
-        }));
-        setMorsePasses(newPasses);
+        // Update morse code database
+        if (activeMethod === "morse"){
+          const newPasses = data.map(item => ({
+            id: item.id,
+            name: item.name,
+            type: 'one-time',
+            expiryTime: item.expiration_time,
+            morsePassword: item.knock_password,
+            binaryPassword: item.password,
+            knockPassword: item.knock_password.substring(0, morsePassword.length-1),
+          }));
+
+          setMorsePasses(newPasses);
+        }
       }
     } catch (error) {
       console.error('Error deleting Morse code:', error);
     }
   }
 
-  const add_morse_code = async (passtoAdd) => {
+  const add_entry_in_db = async (passtoAdd) => {
     try {
-      const response = await fetch('http://localhost:8000/add_morse_code', {
+      const response = await fetch('http://localhost:8000/add_entry', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -260,22 +267,27 @@ function App() {
         body: JSON.stringify({
           id: passtoAdd.id,
           name: passtoAdd.name,
+          type: passtoAdd.type,
           expiration_time: passtoAdd.expiryTime,
-          knock_password: passtoAdd.morsePassword,
-          password: passtoAdd.binaryPassword
+          // Only include these two when it is morse code
+          ...(activeMethod === "morse" && {
+            knock_password: passtoAdd.morsePassword,
+            password: passtoAdd.binaryPassword
+          }),
+          method: activeMethod,
         })});
 
       if (response.ok) {
-        await get_morse_database();
+        await update_database();
       }
     } catch (error) {
-      console.error('Error deleting Morse code:', error);
+      console.error('Error deleting entry:', error);
     }
   }
 
-  const edit_morse_code = async (passtoEdit) => {
+  const edit_entry_in_db = async (passtoEdit) => {
     try {
-      const response = await fetch('http://localhost:8000/edit_morse_code', {
+      const response = await fetch('http://localhost:8000/edit_entry', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -283,38 +295,44 @@ function App() {
         body: JSON.stringify({
           id: passtoEdit.id,
           name: passtoEdit.name,
+          type: passtoEdit.type,
           expiration_time: passtoEdit.expiryTime,
-          knock_password: passtoEdit.morsePassword,
-          password: passtoEdit.binaryPassword
+          // Only include these two when it is morse code
+          ...(activeMethod === "morse" && {
+            knock_password: passtoEdit.morsePassword,
+            password: passtoEdit.binaryPassword
+          }),
+          method: activeMethod,
         })});
 
       if (response.ok) {
-        await get_morse_database();
+        await update_database();
       }
     } catch (error) {
-      console.error('Error deleting Morse code:', error);
+      console.error('Error deleting entry:', error);
     }
   }
 
-  const delete_morse_code = async (id) => {
+  const delete_entry_in_db = async (id) => {
     try {
-      const response = await fetch('http://localhost:8000/delete_morse_code', {
+      const response = await fetch('http://localhost:8000/delete_entry', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           id: id,
+          method: activeMethod,
         })});
 
       if (response.ok) {
-          await get_morse_database();
+          await update_database();
       }
     } catch (error) {
-      console.error('Error deleting Morse code:', error);
+      console.error('Error deleting entry:', error);
     }
   }
-  /* End of Morse Code related API */
+  /* End of APIs */
 
   // Add new pass
   const addNewPass = (pass) => {
@@ -344,7 +362,7 @@ function App() {
     } else if (activeMethod === 'morse') {
       setMorsePasses([...morsePasses, passToAdd]);
       setNextMorseId(nextMorseId + 1); // Increment the next ID
-      add_morse_code(passToAdd);
+      add_entry_in_db(passToAdd);
     } else if (activeMethod === 'voice') {
       setVoicePasses([...voicePasses, passToAdd]);
       setNextVoiceId(nextVoiceId + 1); // Increment the next ID
@@ -369,7 +387,7 @@ function App() {
       setQrPasses(qrPasses.filter(pass => pass.id !== id));
     } else if (activeMethod === 'morse') {
       passToDelete = morsePasses.find(pass => pass.id === id);
-      delete_morse_code(id);
+      delete_entry_in_db(id);
       // setMorsePasses(morsePasses.filter(pass => pass.id !== id));
     } else if (activeMethod === 'voice') {
       passToDelete = voicePasses.find(pass => pass.id === id);
@@ -414,7 +432,7 @@ function App() {
       setQrPasses(qrPasses.map(pass => pass.id === updatedPass.id ? updatedPass : pass));
     } else if (activeMethod === 'morse') {
       setMorsePasses(morsePasses.map(pass => pass.id === updatedPass.id ? updatedPass : pass));
-      edit_morse_code(updatedPass);
+      edit_entry_in_db(updatedPass);
     } else if (activeMethod === 'voice') {
       setVoicePasses(voicePasses.map(pass => pass.id === updatedPass.id ? updatedPass : pass));
     }

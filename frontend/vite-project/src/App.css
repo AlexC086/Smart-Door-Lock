@@ -669,6 +669,7 @@ body {
 .form-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 1rem;
   margin-top: 2rem;
 }
@@ -685,7 +686,15 @@ body {
   font-weight: 600;
 }
 
-.form-actions .action-btn:hover {
+.save-btn:disabled {
+  background: linear-gradient(135deg, #b0bec5 0%, #90a4ae 100%);
+  color: #e0e0e0;
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.7;
+}
+
+.form-actions .action-btn:hover:not(:disabled) {
   filter: brightness(0.95);
   transform: translateY(-2px);
   box-shadow: 0 3px 8px rgba(0,0,0,0.2);
@@ -745,8 +754,12 @@ body {
     gap: 0.5rem;
   }
   
-  .form-actions .action-btn {
+  .form-actions .action-btn, .form-actions .save-button-container {
     width: 100%;
+  }
+  
+  .save-button-container {
+    display: block;
   }
 }
 
@@ -1091,6 +1104,40 @@ body {
   }
 }
 
+/* Save button tooltip */
+.save-button-container {
+  position: relative;
+  display: inline-block;
+}
+
+.save-button-tooltip {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  background-color: #ff5252;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+  white-space: nowrap;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  animation: fadeIn 0.3s;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.save-button-tooltip:after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 15px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #ff5252 transparent transparent transparent;
+}
+
 @media (max-width: 480px) {
   .method-badge {
     display: block;
@@ -1098,5 +1145,17 @@ body {
     margin-top: 0.3rem;
     font-size: 0.6rem;
     width: fit-content;
+  }
+  
+  .save-button-tooltip {
+    width: 200px;
+    white-space: normal;
+    right: -75px;
+    text-align: center;
+  }
+  
+  .save-button-tooltip:after {
+    right: 50%;
+    transform: translateX(50%);
   }
 }

@@ -930,49 +930,56 @@ function App() {
                     >
                       Cancel
                     </button>
-                    <button 
-                      className="action-btn save-btn"
-                      onClick={() => {
-                        if (isCreatingPass) {
-                          // For morse code, ensure we have a password
-                          if (activeMethod === 'morse' && !morsePassword) {
-                            alert('Please create a Morse code password first.');
-                            return;
+                    <div className="save-button-container">
+                      {activeMethod === 'morse' && morseCreationStep < 2 && (
+                        <div className="save-button-tooltip">
+                          Please create a Morse code password first
+                        </div>
+                      )}
+                      <button 
+                        className="action-btn save-btn"
+                        onClick={() => {
+                          if (isCreatingPass) {
+                            // For morse code, ensure we have a password
+                            if (activeMethod === 'morse' && !morsePassword) {
+                              alert('Please create a Morse code password first.');
+                              return;
+                            }
+                            
+                            // If creating a new pass, call addNewPass
+                            // Add morse password to the pass data if applicable
+                            let passToAdd = editingPass;
+                            if (activeMethod === 'morse') {
+                              passToAdd = { ...editingPass, morsePassword };
+                            }
+                            addNewPass(passToAdd);
+                          } else {
+                            // If editing an existing pass
+                            // Update morse password if applicable
+                            let passToUpdate = editingPass;
+                            if (activeMethod === 'morse' && morsePassword) {
+                              const binaryPassword = convertMorseToBinary(morsePassword);
+                              const knockPassword = morsePassword.substring(0, morsePassword.length-1);
+                              
+                              passToUpdate = { 
+                                ...editingPass, 
+                                morsePassword,
+                                binaryPassword,
+                                knockPassword
+                              };
+                            }
+                            updatePass(passToUpdate);
                           }
                           
-                          // If creating a new pass, call addNewPass
-                          // Add morse password to the pass data if applicable
-                          let passToAdd = editingPass;
-                          if (activeMethod === 'morse') {
-                            passToAdd = { ...editingPass, morsePassword };
-                          }
-                          addNewPass(passToAdd);
-                        } else {
-                          // If editing an existing pass
-                          // Update morse password if applicable
-                          let passToUpdate = editingPass;
-                          if (activeMethod === 'morse' && morsePassword) {
-                            const binaryPassword = convertMorseToBinary(morsePassword);
-                            const knockPassword = morsePassword.substring(0, morsePassword.length-1);
-                            
-                            passToUpdate = { 
-                              ...editingPass, 
-                              morsePassword,
-                              binaryPassword,
-                              knockPassword
-                            };
-                          }
-                          updatePass(passToUpdate);
-                        }
-                        
-                        // Reset morse states
-                        setMorseCreationStep(0);
-                        setMorsePassword('');
-                      }}
-                      disabled={activeMethod === 'morse' && morseCreationStep < 2}
-                    >
-                      Save
-                    </button>
+                          // Reset morse states
+                          setMorseCreationStep(0);
+                          setMorsePassword('');
+                        }}
+                        disabled={activeMethod === 'morse' && morseCreationStep < 2}
+                      >
+                        Save
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

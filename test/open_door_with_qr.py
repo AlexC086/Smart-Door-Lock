@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
-from QR_code.qr_code import one_time_qr_scan
+from QR_code.qr_code_livestream import one_time_qr_scan
 
 # Configure serial port
 ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)

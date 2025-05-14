@@ -171,8 +171,11 @@ def scan_qr_code():
         camera.close()
 
 
-def one_time_qr_scan():
-    """Perform a single QR code scan and return True if valid, False otherwise"""
+def one_time_qr_scan(timeout=30):
+    """
+    Scan continuously until a QR code is detected, then return verification result.
+    Returns True if valid QR, False if invalid QR or timeout reached.
+    """
     # Initialize camera
     camera = PiCamera()
     camera.resolution = (640, 480)
@@ -182,21 +185,26 @@ def one_time_qr_scan():
     time.sleep(0.1)  # Allow camera to warm up
 
     try:
-        # Capture a single frame
-        camera.capture(rawCapture, format="bgr")
-        image = rawCapture.array
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            # Clear the stream for next frame
+            rawCapture.truncate(0)
 
-        # Detect QR codes in the frame
-        decoded_objs = pyzbar.decode(image)
-        for obj in decoded_objs:
-            qr_data = obj.data.decode('utf-8')
-            if verify_qr_code(qr_data):
-                return True
+            # Capture frame
+            camera.capture(rawCapture, format="bgr", use_video_port=True)
+            image = rawCapture.array
 
-        return False  # No valid QR code found
+            # Detect QR codes
+            decoded_objs = pyzbar.decode(image)
+            if decoded_objs:  # If any QR code is detected
+                qr_data = decoded_objs[0].data.decode('utf-8')  # Check first QR code found
+                return verify_qr_code(qr_data)
+
+            time.sleep(0.1)  # Small delay between scans
+
+        return False  # Timeout reached with no QR code detected
     finally:
         camera.close()
-        rawCapture.truncate(0)
 
 
 def list_qr_codes():

@@ -1,3 +1,4 @@
+import threading
 import cv2
 import numpy as np
 import requests
@@ -120,51 +121,70 @@ def verify_qr_code(password):
     print("Access denied: Invalid or expired QR code")
     return False
 
-def scan_qr_code():
-    """Scan QR codes from MJPEG HTTP stream with minimal latency."""
-    import requests
+class MJPEGFrameGrabber(threading.Thread):
+    def __init__(self, url):
+        super().__init__()
+        self.url = url
+        self.latest_frame = None
+        self.running = True
+        self.lock = threading.Lock()
+        self.daemon = True  # Thread exits with the main program
 
-    stream = requests.get(FASTAPI_STREAM_URL, stream=True)
-    bytes_data = bytes()
-    print("\nPress q to exit scanning mode.")
-
-    try:
-        while True:
-            # Read enough bytes to catch up to the latest frame
+    def run(self):
+        stream = requests.get(self.url, stream=True)
+        bytes_data = bytes()
+        while self.running:
             chunk = stream.raw.read(8192)
             if not chunk:
                 continue
             bytes_data += chunk
-
-            # Find all complete frames in the buffer
-            frames = []
             a = bytes_data.find(b'\xff\xd8')
             b = bytes_data.find(b'\xff\xd9')
             while a != -1 and b != -1 and b > a:
-                frame = bytes_data[a:b+2]
-                frames.append(frame)
+                jpg = bytes_data[a:b+2]
+                # Update the latest frame thread-safely
+                with self.lock:
+                    self.latest_frame = jpg
                 bytes_data = bytes_data[b+2:]
                 a = bytes_data.find(b'\xff\xd8')
                 b = bytes_data.find(b'\xff\xd9')
 
-            if frames:
-                # Only process the most recent frame
-                jpg = frames[-1]
-                img = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-                if img is None:
-                    continue
+    def get_latest_frame(self):
+        with self.lock:
+            return self.latest_frame
 
-                decoded_objs = pyzbar.decode(img)
-                for obj in decoded_objs:
-                    (x, y, w, h) = obj.rect
-                    cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                    qr_data = obj.data.decode('utf-8')
-                    verify_qr_code(qr_data)
+    def stop(self):
+        self.running = False
 
-                cv2.imshow("QR Code Scanner (FastAPI Stream)", img)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
+def scan_qr_code_threaded():
+    """Scan QR codes using a background thread for the video stream (low latency)."""
+    grabber = MJPEGFrameGrabber(FASTAPI_STREAM_URL)
+    grabber.start()
+    print("\nPress q to exit scanning mode.")
+
+    try:
+        while True:
+            jpg = grabber.get_latest_frame()
+            if jpg is None:
+                time.sleep(0.01)
+                continue
+
+            img = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+            if img is None:
+                continue
+
+            decoded_objs = pyzbar.decode(img)
+            for obj in decoded_objs:
+                (x, y, w, h) = obj.rect
+                cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                qr_data = obj.data.decode('utf-8')
+                verify_qr_code(qr_data)  # Assuming this function is defined in your code
+
+            cv2.imshow("QR Code Scanner (Threaded, FastAPI Stream)", img)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
     finally:
+        grabber.stop()
         cv2.destroyAllWindows()
 
 def one_time_qr_scan(timeout=30):

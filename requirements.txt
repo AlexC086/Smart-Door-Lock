@@ -4,7 +4,6 @@ matplotlib
 scipy
 fastapi
 uvicorn
-open-python==4.1.1.26
-opencv-contrib-python==4.1.0.2
+opencv-python
 pyzbar
 pydantic

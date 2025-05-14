@@ -1159,3 +1159,62 @@ body {
     transform: translateX(50%);
   }
 }
+
+.camera-container {
+  width: 100%;
+  height: 100%;
+  background: #f7f8fa;
+  cursor: pointer;
+}
+
+.camera-container img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* Ensures full video is visible without cropping */
+}
+
+.camera-overlay {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  background: rgba(0,0,0,0.5);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.fullscreen-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.9);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.fullscreen-content {
+  width: 90%;
+  height: 90%;
+  position: relative;
+}
+
+.fullscreen-camera {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fullscreen-camera img {
+  min-width: 65%;
+  object-fit: contain; /* Preserve aspect ratio without cropping */
+}

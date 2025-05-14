@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 
+const RASPBERRY_PI_IP = "192.168.50.190"; // ← EDIT THIS
+const STREAM_PORT = "8080";
+const STREAM_URL = `http://${RASPBERRY_PI_IP}:${STREAM_PORT}/?action=stream`;
 function App() {
   // Get current date in local string format
   const getCurrentDateTime = () => {
@@ -372,12 +375,25 @@ function App() {
 
       {/* Main Content */}
       <div className="main-content">
-        {/* Camera Section */}          <div className="camera-section">
+        {/* Camera Section */}
+        <div className="camera-section">
           <h2 className="section-title">Real-time Camera</h2>
           <div className="camera-container" onClick={() => setIsFullScreen(true)}>
-            <div className="camera-placeholder">
-              <span>Click to Full Screen</span>
-            </div>
+            {/* MJPG Stream (works with most browsers) */}
+            <img
+              src={STREAM_URL}
+              alt="Live Camera Feed"
+              onError={(e) => {
+                e.target.src = `${STREAM_URL}&t=${Date.now()}`; // Force refresh
+              }}
+            />
+
+            {/* Overlay (only shown when not fullscreen) */}
+            {!isFullScreen && (
+              <div className="camera-overlay">
+                <span>Click to Full Screen</span>
+              </div>
+            )}
           </div>
         </div>
         
@@ -390,10 +406,13 @@ function App() {
                 <button className="close-btn" onClick={() => setIsFullScreen(false)}>×</button>
               </div>
               <div className="fullscreen-camera">
-                {/* This would be your actual camera feed */}
-                <div className="camera-placeholder">
-                  <span>Live Camera Feed</span>
-                </div>
+                <img
+                  src={STREAM_URL}
+                  alt="Fullscreen Camera Feed"
+                  onError={(e) => {
+                    e.target.src = `${STREAM_URL}&t=${Date.now()}`;
+                  }}
+                />
               </div>
             </div>
           </div>

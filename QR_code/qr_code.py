@@ -171,6 +171,34 @@ def scan_qr_code():
         camera.close()
 
 
+def one_time_qr_scan():
+    """Perform a single QR code scan and return True if valid, False otherwise"""
+    # Initialize camera
+    camera = PiCamera()
+    camera.resolution = (640, 480)
+    camera.framerate = 24
+    rawCapture = PiRGBArray(camera, size=(640, 480))
+
+    time.sleep(0.1)  # Allow camera to warm up
+
+    try:
+        # Capture a single frame
+        camera.capture(rawCapture, format="bgr")
+        image = rawCapture.array
+
+        # Detect QR codes in the frame
+        decoded_objs = pyzbar.decode(image)
+        for obj in decoded_objs:
+            qr_data = obj.data.decode('utf-8')
+            if verify_qr_code(qr_data):
+                return True
+
+        return False  # No valid QR code found
+    finally:
+        camera.close()
+        rawCapture.truncate(0)
+
+
 def list_qr_codes():
     """List all active QR codes"""
     data = load_database()

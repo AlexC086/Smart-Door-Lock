@@ -121,38 +121,51 @@ def verify_qr_code(password):
     return False
 
 def scan_qr_code():
-    """Scan QR codes using the camera"""
-    stream = requests.get(FASTAPI_STREAM_URL, stream=True)
-    bytes_data = bytes()
+    """Scan QR codes using the camera with reduced latency"""
+    session = requests.Session()
+    stream = session.get(FASTAPI_STREAM_URL, stream=True)
     
     print("\nPress q to exit scanning mode.")
+    
     try:
-        while True:
-            # Read stream data
-            bytes_data += stream.raw.read(1024)
+        bytes_data = bytes()
+        last_frame_time = time.time()
+        
+        for chunk in stream.iter_content(chunk_size=8192):  # Larger chunk size
+            bytes_data += chunk
             a = bytes_data.find(b'\xff\xd8')  # JPEG start
             b = bytes_data.find(b'\xff\xd9')  # JPEG end
             
             if a != -1 and b != -1:
-                jpg = bytes_data[a:b+2]
-                bytes_data = bytes_data[b+2:]
-                
-                # Convert to OpenCV format
-                frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-                
-                # QR detection
-                decoded_objs = pyzbar.decode(frame)
-                for obj in decoded_objs:
-                    (x, y, w, h) = obj.rect
-                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                    qr_data = obj.data.decode('utf-8')
-                    verify_qr_code(qr_data)
-                
-                cv2.imshow("QR Code Scanner (FastAPI Stream)", frame)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
+                # Only process if we have capacity (simplest form of frame rate control)
+                current_time = time.time()
+                if current_time - last_frame_time >= 0.033:  # ~30fps
+                    jpg = bytes_data[a:b+2]
+                    bytes_data = bytes_data[b+2:]
+                    
+                    try:
+                        # Convert to OpenCV format
+                        frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+                        if frame is not None:
+                            # QR detection
+                            decoded_objs = pyzbar.decode(frame)
+                            for obj in decoded_objs:
+                                (x, y, w, h) = obj.rect
+                                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                                qr_data = obj.data.decode('utf-8')
+                                verify_qr_code(qr_data)
+                            
+                            cv2.imshow("QR Code Scanner (FastAPI Stream)", frame)
+                            last_frame_time = current_time
+                    except Exception as e:
+                        print(f"Frame processing error: {e}")
+                        continue
+                    
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
     finally:
         cv2.destroyAllWindows()
+        session.close()
 
 def one_time_qr_scan(timeout=30):
     """

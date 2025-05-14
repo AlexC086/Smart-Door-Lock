@@ -121,38 +121,20 @@ def verify_qr_code(password):
     return False
 
 def scan_qr_code():
-    """Scan QR codes using the camera (low-latency version)"""
-    stream = requests.get(FASTAPI_STREAM_URL, stream=True)
-    bytes_data = bytes()
+    """Scan QR codes using the camera stream via OpenCV VideoCapture."""
+    cap = cv2.VideoCapture(FASTAPI_STREAM_URL)
+    if not cap.isOpened():
+        print("Failed to open video stream!")
+        return
+
     print("\nPress q to exit scanning mode.")
 
     try:
         while True:
-            # Keep reading until we get the latest complete JPEG frame
-            while True:
-                chunk = stream.raw.read(4096)
-                if not chunk:
-                    break
-                bytes_data += chunk
-                a = bytes_data.find(b'\xff\xd8')
-                b = bytes_data.find(b'\xff\xd9')
-                if a != -1 and b != -1 and b > a:
-                    # Found a JPEG frame, cut out everything before the last frame found
-                    # So if stream has several frames, we skip to the last
-                    while True:
-                        next_a = bytes_data.find(b'\xff\xd8', a + 2)
-                        next_b = bytes_data.find(b'\xff\xd9', b + 2)
-                        if next_a != -1 and next_b != -1 and next_b > next_a:
-                            a = next_a
-                            b = next_b
-                        else:
-                            break
-                    jpg = bytes_data[a:b+2]
-                    bytes_data = bytes_data[b+2:]
-                    break
-
-            frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-            if frame is None:
+            ret, frame = cap.read()
+            if not ret or frame is None:
+                print("No frame received from stream.")
+                time.sleep(0.1)
                 continue
 
             decoded_objs = pyzbar.decode(frame)
@@ -161,10 +143,12 @@ def scan_qr_code():
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 qr_data = obj.data.decode('utf-8')
                 verify_qr_code(qr_data)
+
             cv2.imshow("QR Code Scanner (FastAPI Stream)", frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
     finally:
+        cap.release()
         cv2.destroyAllWindows()
 
 def one_time_qr_scan(timeout=30):

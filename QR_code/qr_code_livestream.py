@@ -156,11 +156,14 @@ class MJPEGFrameGrabber(threading.Thread):
     def stop(self):
         self.running = False
 
-def scan_qr_code_threaded():
-    """Scan QR codes using a background thread for the video stream (low latency)."""
+def scan_qr_code():
+    """
+    Scan QR codes using a background thread for the video stream
+    Uses threaded frame grabbing for low latency
+    """
     grabber = MJPEGFrameGrabber(FASTAPI_STREAM_URL)
     grabber.start()
-    print("\nPress q to exit scanning mode.")
+    print("\nPress Ctrl+C to exit scanning mode.")
 
     try:
         while True:
@@ -189,33 +192,35 @@ def scan_qr_code_threaded():
 
 def one_time_qr_scan(timeout=30):
     """
-    Scan continuously until a QR code is detected, then return verification result.
-    Returns True if valid QR, False if invalid QR or timeout reached.
+    Scan continuously until a QR code is detected, then return verification result
+    Returns True if valid QR, False if invalid QR or timeout reached
+    Uses threaded frame grabbing for low latency
     """
+    grabber = MJPEGFrameGrabber(FASTAPI_STREAM_URL)
+    grabber.start()
     start_time = time.time()
-    stream = requests.get(FASTAPI_STREAM_URL, stream=True)
-    bytes_data = bytes()
-    
+
     try:
         while time.time() - start_time < timeout:
-            # Read stream data
-            bytes_data += stream.raw.read(1024)
-            a = bytes_data.find(b'\xff\xd8')
-            b = bytes_data.find(b'\xff\xd9')
-            
-            if a != -1 and b != -1:
-                jpg = bytes_data[a:b+2]
-                bytes_data = bytes_data[b+2:]
-                frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
-                
-                decoded_objs = pyzbar.decode(frame)
-                if decoded_objs:
-                    qr_data = decoded_objs[0].data.decode('utf-8')
-                    return verify_qr_code(qr_data)
-            
-            time.sleep(0.1)
+            jpg = grabber.get_latest_frame()
+            if jpg is None:
+                time.sleep(0.01)
+                continue
+
+            frame = cv2.imdecode(np.frombuffer(jpg, dtype=np.uint8), cv2.IMREAD_COLOR)
+            if frame is None:
+                continue
+
+            decoded_objs = pyzbar.decode(frame)
+            if decoded_objs:
+                qr_data = decoded_objs[0].data.decode('utf-8')
+                result = verify_qr_code(qr_data)
+                return result
+
+            time.sleep(0.01)
         return False
     finally:
+        grabber.stop()
         cv2.destroyAllWindows()
 
 def list_qr_codes():

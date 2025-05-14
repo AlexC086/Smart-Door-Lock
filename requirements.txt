@@ -7,3 +7,4 @@ uvicorn
 opencv-python
 pyzbar
 pydantic
+qrcode

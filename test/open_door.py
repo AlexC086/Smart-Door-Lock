@@ -55,5 +55,6 @@ class DoorUnlocker:
             self.ser.close()
 
 if __name__ == "__main__":
+    print("Monitoring for unlock requests...")
     unlocker = DoorUnlocker()
     unlocker.monitor_unlock_requests()

@@ -181,12 +181,16 @@ def start_recording_knocks():
         data = json.load(f)
 
     for item in data:
-        if item["expiration_time"] is None:
-            valid_passwords.append(item["password"])
-        else:
-            expiration_time = item["expiration_time"]
-            if expiration_time > current_time.strftime("%Y-%m-%d %H:%M:%S"):
+
+        if item["deletion_time"] is None:
+
+            # If it is not deleted, check whether it is expired
+            if item["expiration_time"] is None:
                 valid_passwords.append(item["password"])
+            else:
+                expiration_time = item["expiration_time"]
+                if expiration_time > current_time.strftime("%Y-%m-%d %H:%M:%S"):
+                    valid_passwords.append(item["password"])
 
     if valid_passwords == []:
         password, knock_password = generate_binary_password()
@@ -210,9 +214,8 @@ def start_recording_knocks():
                 data = json.load(f)
 
             for item in data:
-                # Make the password expire after use
+                # Delete the password after use
                 if item["password"] == password:
-                    item["expiration_time"] = current_time.strftime("%Y-%m-%d %H:%M:%S")
                     item["deletion_time"] = current_time.strftime("%Y-%m-%d %H:%M:%S")
 
             break

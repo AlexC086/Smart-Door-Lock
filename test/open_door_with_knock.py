@@ -1,6 +1,6 @@
 import serial
 import time
-from binary_code import start_recording_knocks
+from Knock_pattern.binary_code import start_recording_knocks
 
 # Configure serial port
 ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)

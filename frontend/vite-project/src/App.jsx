@@ -178,31 +178,6 @@ function App() {
     });
   }
 
-  // Call backend to generate binary code
-  const generate_binary_code = async () => {
-    try {
-      const response = await fetch('http://localhost:8000/generate_binary_password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // body: JSON.stringify({}) // If you need to send data
-      });
-
-      if (response.ok) {
-        let data = await response.json();
-        let password = data.password;
-        let knock_password = data.knock_password;
-        console.log(password);
-        console.log(knock_password);
-        return password, knock_password
-      }
-    } catch (error) {
-      console.error('Error generating Morse code:', error);
-      // Handle error (show notification, etc.)
-    }
-  }
-
 
   // Convert Morse code to binary (. = 0, ._ = 1)
   const convertMorseToBinary = (morseCode) => {
@@ -247,7 +222,100 @@ function App() {
   const countMorseUnits = (morseString) => {
     return parseMorseUnits(morseString).length;
   };
-  
+
+  /* Morse Code related API*/
+  const get_morse_database = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/get_morse_database', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }});
+
+      if (response.ok) {
+        let data = await response.json();
+        const newPasses = data.map(item => ({
+          id: item.id,
+          name: item.name,
+          type: 'one-time',
+          expiryTime: item.expiration_time,
+          morsePassword: item.knock_password,
+          binaryPassword: item.password,
+          knockPassword: item.knock_password.substring(0, morsePassword.length-1),
+        }));
+        setMorsePasses(newPasses);
+      }
+    } catch (error) {
+      console.error('Error deleting Morse code:', error);
+    }
+  }
+
+  const add_morse_code = async (passtoAdd) => {
+    try {
+      const response = await fetch('http://localhost:8000/add_morse_code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: passtoAdd.id,
+          name: passtoAdd.name,
+          expiration_time: passtoAdd.expiryTime,
+          knock_password: passtoAdd.morsePassword,
+          password: passtoAdd.binaryPassword
+        })});
+
+      if (response.ok) {
+        await get_morse_database();
+      }
+    } catch (error) {
+      console.error('Error deleting Morse code:', error);
+    }
+  }
+
+  const edit_morse_code = async (passtoEdit) => {
+    try {
+      const response = await fetch('http://localhost:8000/edit_morse_code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: passtoEdit.id,
+          name: passtoEdit.name,
+          expiration_time: passtoEdit.expiryTime,
+          knock_password: passtoEdit.morsePassword,
+          password: passtoEdit.binaryPassword
+        })});
+
+      if (response.ok) {
+        await get_morse_database();
+      }
+    } catch (error) {
+      console.error('Error deleting Morse code:', error);
+    }
+  }
+
+  const delete_morse_code = async (id) => {
+    try {
+      const response = await fetch('http://localhost:8000/delete_morse_code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: id,
+        })});
+
+      if (response.ok) {
+          await get_morse_database();
+      }
+    } catch (error) {
+      console.error('Error deleting Morse code:', error);
+    }
+  }
+  /* End of Morse Code related API */
+
   // Add new pass
   const addNewPass = (pass) => {
     let passToAdd = pass;
@@ -276,6 +344,7 @@ function App() {
     } else if (activeMethod === 'morse') {
       setMorsePasses([...morsePasses, passToAdd]);
       setNextMorseId(nextMorseId + 1); // Increment the next ID
+      add_morse_code(passToAdd);
     } else if (activeMethod === 'voice') {
       setVoicePasses([...voicePasses, passToAdd]);
       setNextVoiceId(nextVoiceId + 1); // Increment the next ID
@@ -289,7 +358,7 @@ function App() {
                      activeMethod === 'morse' ? 'Morse Code' : 'Voice';
     addNotice(`New ${pass.type} created`, methodName);
   };
-  
+
   // Delete pass
   const deletePass = (id) => {
     let passToDelete;
@@ -300,7 +369,8 @@ function App() {
       setQrPasses(qrPasses.filter(pass => pass.id !== id));
     } else if (activeMethod === 'morse') {
       passToDelete = morsePasses.find(pass => pass.id === id);
-      setMorsePasses(morsePasses.filter(pass => pass.id !== id));
+      delete_morse_code(id);
+      // setMorsePasses(morsePasses.filter(pass => pass.id !== id));
     } else if (activeMethod === 'voice') {
       passToDelete = voicePasses.find(pass => pass.id === id);
       setVoicePasses(voicePasses.filter(pass => pass.id !== id));
@@ -344,6 +414,7 @@ function App() {
       setQrPasses(qrPasses.map(pass => pass.id === updatedPass.id ? updatedPass : pass));
     } else if (activeMethod === 'morse') {
       setMorsePasses(morsePasses.map(pass => pass.id === updatedPass.id ? updatedPass : pass));
+      edit_morse_code(updatedPass);
     } else if (activeMethod === 'voice') {
       setVoicePasses(voicePasses.map(pass => pass.id === updatedPass.id ? updatedPass : pass));
     }

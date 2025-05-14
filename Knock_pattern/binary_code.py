@@ -6,7 +6,6 @@ import sounddevice as sd
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 import argparse
-import random
 from play_and_record import int_or_str, audio_callback, record_audio
 
 
@@ -17,43 +16,65 @@ threshold = 0.3  # Amplitude threshold for detection
 min_silence = 0.1  # Minimum silence duration between knocks (seconds)
 min_knock_duration = 0.05  # Minimum knock duration (seconds)
 bit_threshold = 0.6  # Silence duration threshold for 0/1 (seconds)
+DATABASE = "binary_password.json"
+
+''' Database Related Codes '''
+def load_binary_database():
+    with open(DATABASE, 'r') as f:
+        return json.load(f)
 
 
-def generate_binary_password(filename="binary_password.json"):
-    random_number = random.randint(0, 63)
-    password = f"{random_number:06b}"  # 6-bit binary string
-    knock_password = password.replace('0', '. ').replace('1', '. _ ') + "."
-    current_time = datetime.datetime.now()
-    current_id = 1
-
-    # Load existing data (if file exists)
-    existing_data = []
-    if os.path.exists(filename):
-        with open(filename, 'r') as f:
-            existing_data = json.load(f)
-        if existing_data:
-            current_id = existing_data[-1].get('id') + 1
+def update_binary_database(data):
+    with open(DATABASE, 'w') as f:
+        json.dump(data, f, indent=2)
 
 
-    data = {
-        "id": current_id,
+def add_binary_password(id, name, expiration_time, knock_password, password):
+    data = load_binary_database()
+
+    # Add new password
+    new_password = {
+        "id": id,
+        "name": name,
         "password": password,
         "knock_password": knock_password,
-        "creation_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
-        "expiration_time": None,
+        "creation_time": datetime.datetime.now().strftime('%Y-%m-%dT%H:%M'),
+        "expiration_time": expiration_time,
         "deletion_time": None,
     }
 
-    # Append new password
-    existing_data.append(data)
+    data.append(new_password)
+    update_binary_database(data)
 
-    # Write back to file
-    with open(filename, 'w') as f:
-        json.dump(existing_data, f, indent=2)
-
-    return password, knock_password
+    return [item for item in data if item["deletion_time"] is None]
 
 
+def edit_binary_password(id, name, expiration_time, knock_password, password):
+    data = load_binary_database()
+    for item in data:
+        if item["id"] == id:
+            item["name"] = name
+            item["knock_password"] = knock_password
+            item["password"] = password
+            item["expiration_time"] = expiration_time
+
+    update_binary_database(data)
+
+    return [item for item in data if item["deletion_time"] is None]
+
+
+def delete_binary_password(id):
+    data = load_binary_database()
+    for item in data:
+        # Soft delete the password after use
+        if item["id"] == id:
+            item["deletion_time"] = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M')
+    update_binary_database(data)
+
+    return [item for item in data if item["deletion_time"] is None]
+
+
+''' Detection Related Codes'''
 def detect_knocks(audio_data, channel=0):
     signal = audio_data[:, channel]
     signal = signal / np.max(np.abs(signal))
@@ -177,8 +198,8 @@ def start_recording_knocks():
         # Create the file with empty JSON object
         with open('binary_password.json', 'w') as f:
             json.dump({}, f)
-    with open('binary_password.json') as f:
-        data = json.load(f)
+
+    data = load_database()
 
     for item in data:
 
@@ -210,8 +231,7 @@ def start_recording_knocks():
     for password in valid_passwords:
         unlock = check_binary_password(password, binary_str)
         if unlock:
-            with open('binary_password.json') as f:
-                data = json.load(f)
+            data = load_database()
 
             for item in data:
                 # Delete the password after use
@@ -247,9 +267,6 @@ if __name__ == '__main__':
     if args.list_devices:
         print(sd.query_devices())
         exit()
-
-    password, knock_password = generate_binary_password()
-    print(f"\nKnock detection password: {knock_password}")
 
     # Update parameters from command line
     threshold = args.threshold

@@ -239,7 +239,7 @@ def main():
         if choice == 1:
             one_time = input("Is this QR code a one-time pass? Please enter 'yes' or 'no': ").lower()
             one_time_bool = one_time == 'yes'
-            create_qr_code(one_time_bool)
+            create_qr_code(one_time=one_time_bool)
         elif choice == 2:
             qr_id = int(input("Enter QR code ID to delete: "))
             delete_qr_code(qr_id)

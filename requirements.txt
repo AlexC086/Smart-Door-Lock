@@ -4,7 +4,8 @@ matplotlib
 scipy
 fastapi
 uvicorn
-opencv-python
+opencv-python==4.1.1.26
+opencv-contrib-python==4.1.0.25
 pyzbar
 pydantic
 qrcode

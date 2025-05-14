@@ -1,21 +1,29 @@
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
-from picamera2 import Picamera2
+import picamera
+import picamera.array
 import cv2
-
-### You can donate at https://www.buymeacoffee.com/mmshilleh 
+import io
 
 app = FastAPI()
 
-camera = Picamera2()
-camera.configure(camera.create_preview_configuration(main={"format": 'XRGB8888', "size": (640, 480)}))
-camera.start()
+# Initialize the camera
+camera = picamera.PiCamera()
+camera.resolution = (640, 480)
+camera.framerate = 24
 
 def generate_frames():
-    while True:
-        frame = camera.capture_array()
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
+    stream = io.BytesIO()
+    for _ in camera.capture_continuous(stream, 'jpeg', use_video_port=True):
+        # Rewind the stream and read the frame
+        stream.seek(0)
+        frame = stream.read()
+        
+        # Clear the stream for the next frame
+        stream.seek(0)
+        stream.truncate()
+        
+        # Yield the frame in the multipart format
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 

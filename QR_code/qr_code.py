@@ -1,17 +1,19 @@
 import cv2
 from pyzbar import pyzbar
-from picamera2 import Picamera2
+from picamera.array import PiRGBArray
+from picamera import PiCamera
 import time
 import json
 import os
 import secrets
-from datetime import datetime, timedelta
-import qrcode
+from datetime import datetime
+import qrcode  # Added for QR code generation
 
 # Configuration
 QR_DATABASE = "qr_codes.json"
 QR_CODE_DIR = "qr_codes"  # Directory to store QR code images
 PASSWORD_LENGTH = 32  # 256-bit password
+
 
 def initialize_database():
     """Create an empty database if it doesn't exist"""
@@ -23,19 +25,23 @@ def initialize_database():
     if not os.path.exists(QR_CODE_DIR):
         os.makedirs(QR_CODE_DIR)
 
+
 def load_database():
     """Load the QR code database"""
     with open(QR_DATABASE, 'r') as f:
         return json.load(f)
+
 
 def save_database(data):
     """Save the QR code database"""
     with open(QR_DATABASE, 'w') as f:
         json.dump(data, f, indent=2)
 
+
 def generate_password():
     """Generate a secure random password"""
     return secrets.token_hex(PASSWORD_LENGTH)
+
 
 def generate_qr_code(data, qr_id):
     """Generate and save a QR code image"""
@@ -53,6 +59,7 @@ def generate_qr_code(data, qr_id):
     img = qr.make_image(fill_color="black", back_color="white")
     img.save(filename)
     return filename
+
 
 def create_qr_code(name=None, expiration_time=None, one_time=False):
     """Create a new QR code entry and generate QR image"""
@@ -87,6 +94,7 @@ def create_qr_code(name=None, expiration_time=None, one_time=False):
     print(f"Password: {password}")
     print(f"QR code saved as: {qr_filename}\n")
 
+
 def delete_qr_code(qr_id):
     """Mark a QR code as deleted (soft delete)"""
     data = load_database()
@@ -95,10 +103,14 @@ def delete_qr_code(qr_id):
         if entry['id'] == qr_id and entry['deletion_time'] is None:
             entry['deletion_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             save_database(data)
+
+            # Optionally, you could delete the QR code file here
+            # But we'll keep it for record keeping
             print(f"QR code {qr_id} has been deleted (marked as inactive)")
             return
 
     print(f"QR code {qr_id} not found or already deleted")
+
 
 def verify_qr_code(password):
     """Verify if a QR code is valid"""
@@ -118,43 +130,46 @@ def verify_qr_code(password):
     print("Access denied: Invalid or expired QR code")
     return False
 
+
 def scan_qr_code():
     """Scan QR codes using the camera"""
     # Initialize camera
-    picam2 = Picamera2()
-    preview_config = picam2.create_preview_configuration(main={"size": (640, 480)})
-    picam2.configure(preview_config)
-    picam2.start()
+    camera = PiCamera()
+    camera.resolution = (640, 480)
+    camera.framerate = 24
+    rawCapture = PiRGBArray(camera, size=(640, 480))
+
+    time.sleep(0.1)  # Allow camera to warm up
 
     print("\nPress q to exit scanning mode.")
     try:
-        while True:
-            # Capture frame
-            image = picam2.capture_array()
-
-            # Convert to RGB (OpenCV uses BGR)
-            rgb_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+            image = frame.array
 
             # Detect QR codes in the frame
-            decoded_objs = pyzbar.decode(rgb_image)
+            decoded_objs = pyzbar.decode(image)
             for obj in decoded_objs:
                 # Draw rectangle around QR code
                 (x, y, w, h) = obj.rect
-                cv2.rectangle(rgb_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
                 # Verify QR code
                 qr_data = obj.data.decode('utf-8')
                 verify_qr_code(qr_data)
 
             # Display the image
-            cv2.imshow("QR Code Scanner", rgb_image)
+            cv2.imshow("QR Code Scanner", image)
             key = cv2.waitKey(1) & 0xFF
+
+            # Clear the stream for next frame
+            rawCapture.truncate(0)
 
             if key == ord("q"):
                 break
     finally:
         cv2.destroyAllWindows()
-        picam2.stop()
+        camera.close()
+
 
 def one_time_qr_scan(timeout=30):
     """
@@ -162,22 +177,25 @@ def one_time_qr_scan(timeout=30):
     Returns True if valid QR, False if invalid QR or timeout reached.
     """
     # Initialize camera
-    picam2 = Picamera2()
-    preview_config = picam2.create_preview_configuration(main={"size": (640, 480)})
-    picam2.configure(preview_config)
-    picam2.start()
+    camera = PiCamera()
+    camera.resolution = (640, 480)
+    camera.framerate = 24
+    rawCapture = PiRGBArray(camera, size=(640, 480))
+
+    time.sleep(0.1)  # Allow camera to warm up
 
     try:
         start_time = time.time()
         while time.time() - start_time < timeout:
-            # Capture frame
-            image = picam2.capture_array()
+            # Clear the stream for next frame
+            rawCapture.truncate(0)
 
-            # Convert to RGB (OpenCV uses BGR)
-            rgb_image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            # Capture frame
+            camera.capture(rawCapture, format="bgr", use_video_port=True)
+            image = rawCapture.array
 
             # Detect QR codes
-            decoded_objs = pyzbar.decode(rgb_image)
+            decoded_objs = pyzbar.decode(image)
             if decoded_objs:  # If any QR code is detected
                 qr_data = decoded_objs[0].data.decode('utf-8')  # Check first QR code found
                 return verify_qr_code(qr_data)
@@ -186,7 +204,8 @@ def one_time_qr_scan(timeout=30):
 
         return False  # Timeout reached with no QR code detected
     finally:
-        picam2.stop()
+        camera.close()
+
 
 def list_qr_codes():
     """List all active QR codes"""
@@ -210,6 +229,7 @@ def list_qr_codes():
         if entry['deletion_time'] is not None:
             print(f"{entry['id']}\t{entry['creation_time']}\t{entry['deletion_time']}")
 
+
 def set_expiration(qr_id, days):
     """Set expiration time for a QR code"""
     data = load_database()
@@ -228,6 +248,7 @@ def set_expiration(qr_id, days):
 
     print(f"QR code {qr_id} not found or already deleted")
 
+
 def main_menu():
     """Display the main menu"""
     print("\nDoor Access QR Code System")
@@ -244,6 +265,7 @@ def main_menu():
     except ValueError:
         return -1
 
+
 def main():
     initialize_database()
 
@@ -251,9 +273,9 @@ def main():
         choice = main_menu()
 
         if choice == 1:
-            name = input("Enter a name for this QR code (optional): ")
-            one_time = input("Is this QR code a one-time pass? (yes/no): ").lower() == 'yes'
-            create_qr_code(name=name, one_time=one_time)
+            one_time = input("Is this QR code a one-time pass? Please enter 'yes' or 'no': ").lower()
+            one_time_bool = one_time == 'yes'
+            create_qr_code(one_time=one_time_bool)
         elif choice == 2:
             qr_id = int(input("Enter QR code ID to delete: "))
             delete_qr_code(qr_id)
@@ -270,6 +292,7 @@ def main():
             break
         else:
             print("Invalid choice, please try again")
+
 
 if __name__ == "__main__":
     main()

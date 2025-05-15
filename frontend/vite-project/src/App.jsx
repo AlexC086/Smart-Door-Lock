@@ -17,9 +17,9 @@ function App() {
   
   const [currentDateTime] = useState(getCurrentDateTime())
   const [notices, setNotices] = useState([
-    { id: 1, date: currentDateTime.date, time: currentDateTime.time, message: 'Door unlocked', method: 'Voice' },
-    { id: 2, date: '2025-05-12', time: '14:35', message: 'Door unlocked', method: 'QR Code' },
-    { id: 3, date: '2025-05-12', time: '09:17', message: 'Access denied', method: 'Morse Code' },
+    // { id: 1, date: currentDateTime.date, time: currentDateTime.time, message: 'Door unlocked', method: 'Voice' },
+    // { id: 2, date: '2025-05-12', time: '14:35', message: 'Door unlocked', method: 'QR Code' },
+    // { id: 3, date: '2025-05-12', time: '09:17', message: 'Access denied', method: 'Morse Code' },
   ])
   const [isFullScreen, setIsFullScreen] = useState(false)
   const [showManageModal, setShowManageModal] = useState(false)
@@ -32,11 +32,11 @@ function App() {
   ])
   const [invalidQrPasses, setInvalidQrPasses] = useState([]) // Track deleted QR passes
   const [morsePasses, setMorsePasses] = useState([
-    { id: 1, name: 'Guest Morse', type: 'one-time', expiryTime: '2025-05-15T18:00' }
+    // { id: 1, name: 'Guest Morse', type: 'one-time', expiryTime: '2025-05-15T18:00' }
   ])
   const [invalidMorsePasses, setInvalidMorsePasses] = useState([]) // Track deleted/expired Morse passes
   const [voicePasses, setVoicePasses] = useState([
-    { id: 1, name: 'Voice Pass', type: 'multiple-pass', expiryTime: '2025-06-10T10:00' }
+    // { id: 1, name: 'Voice Pass', type: 'multiple-pass', expiryTime: '2025-06-10T10:00' }
   ])
   const [invalidVoicePasses, setInvalidVoicePasses] = useState([]) // Track deleted/expired Voice passes
   
@@ -398,6 +398,38 @@ function App() {
   // Get the count of morse units (treats ._ as a single digit)
   const countMorseUnits = (morseString) => {
     return parseMorseUnits(morseString).length;
+  };
+
+  // Get the nearest expiring pass for a method
+  const getNearestExpiringPass = (method) => {
+    let passes;
+    switch(method) {
+      case 'qr':
+        passes = qrPasses;
+        break;
+      case 'morse':
+        passes = morsePasses;
+        break;
+      case 'voice':
+        passes = voicePasses;
+        break;
+      default:
+        passes = [];
+    }
+    
+    // Filter out passes without expiry time
+    const passesWithExpiry = passes.filter(pass => pass.expiryTime);
+    
+    // If no passes with expiry, return null
+    if (passesWithExpiry.length === 0) return null;
+    
+    // Sort by expiry time (ascending)
+    const sortedPasses = [...passesWithExpiry].sort((a, b) => {
+      return new Date(a.expiryTime) - new Date(b.expiryTime);
+    });
+    
+    // Return the soonest expiring pass
+    return sortedPasses[0];
   };
 
   /* APIs */
@@ -834,7 +866,7 @@ function App() {
             <div className="method-details">
               <div className="method-name">QR Code</div>
               <div className="method-status">
-                <span>Soon expired:</span>
+                <span>Soon expired: {getNearestExpiringPass('qr')?.name || 'None'}</span>
                 <button className="manage-btn" onClick={() => {
                   setActiveMethod('qr');
                   setEditingPass(null);
@@ -855,7 +887,7 @@ function App() {
                 <span className="method-badge">One-Time Only</span>
               </div>
               <div className="method-status">
-                <span>Soon expired:</span>
+                <span>Soon expired: {getNearestExpiringPass('morse')?.name || 'None'}</span>
                 <button className="manage-btn" onClick={() => {
                   setActiveMethod('morse');
                   setEditingPass(null);
@@ -876,7 +908,7 @@ function App() {
             <div className="method-details">
               <div className="method-name">Voice</div>
               <div className="method-status">
-                <span>Soon expired:</span>
+                <span>Soon expired: {getNearestExpiringPass('voice')?.name || 'None'}</span>
                 <button className="manage-btn" onClick={() => {
                   setActiveMethod('voice');
                   setEditingPass(null);

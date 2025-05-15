@@ -43,11 +43,11 @@ class LoadDB(BaseModel):
 async def load_database(request: LoadDB):
     if request.method == "morse":
         data = load_binary_database()
-        return [item for item in data if item["deletion_time"] is None]
+        return [item for item in data]
 
     elif request.method == "qr":
         data = load_qr_database()
-        return [item for item in data if item["deletion_time"] is None]
+        return [item for item in data]
 
 @app.post("/add_entry")
 async def add_entry(request: EditEntry):

@@ -24,6 +24,7 @@ function App() {
   const [isFullScreen, setIsFullScreen] = useState(false)
   const [showManageModal, setShowManageModal] = useState(false)
   const [activeMethod, setActiveMethod] = useState(null) // 'qr', 'morse', or 'voice'
+  const [passToDelete, setPassToDelete] = useState(null) // Track pass pending deletion for confirmation
   
   // Separate state for each method type
   const [qrPasses, setQrPasses] = useState([
@@ -445,19 +446,34 @@ function App() {
     addNotice(`New ${pass.type} created`, methodName);
   };
 
-  // Delete pass
+  // Show delete confirmation
   const deletePass = (id) => {
-    let passToDelete;
-    
     // Find the pass to be deleted
+    let pass;
     if (activeMethod === 'qr') {
-      passToDelete = qrPasses.find(pass => pass.id === id);
+      pass = qrPasses.find(p => p.id === id);
+    } else if (activeMethod === 'morse') {
+      pass = morsePasses.find(p => p.id === id);
+    } else if (activeMethod === 'voice') {
+      pass = voicePasses.find(p => p.id === id);
+    }
+    
+    // Set the pass to delete for confirmation modal
+    setPassToDelete(pass);
+  };
+
+  // Confirm and execute deletion
+  const confirmDeletePass = () => {
+    if (!passToDelete) return;
+    
+    const id = passToDelete.id;
+    
+    // Perform the actual deletion
+    if (activeMethod === 'qr') {
       delete_entry_in_db(id);
     } else if (activeMethod === 'morse') {
-      passToDelete = morsePasses.find(pass => pass.id === id);
       delete_entry_in_db(id);
     } else if (activeMethod === 'voice') {
-      passToDelete = voicePasses.find(pass => pass.id === id);
       setVoicePasses(voicePasses.filter(pass => pass.id !== id));
     }
     
@@ -466,11 +482,12 @@ function App() {
     }
     
     // Add notice for deletion
-    if (passToDelete) {
-      const methodName = activeMethod === 'qr' ? 'QR Code' : 
-                        activeMethod === 'morse' ? 'Morse Code' : 'Voice';
-      addNotice(`${passToDelete.name} deleted`, methodName);
-    }
+    const methodName = activeMethod === 'qr' ? 'QR Code' : 
+                      activeMethod === 'morse' ? 'Morse Code' : 'Voice';
+    addNotice(`${passToDelete.name} deleted`, methodName);
+    
+    // Clear the pass to delete
+    setPassToDelete(null);
   };
   
   // Add new notice
@@ -1312,6 +1329,54 @@ function App() {
                   onClick={() => setPreviewPass(null)}
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {passToDelete && (
+        <div className="manage-modal-backdrop" onClick={() => setPassToDelete(null)}>
+          <div className="manage-modal-content" 
+            onClick={e => e.stopPropagation()} 
+            style={{ maxWidth: '400px' }}>
+            <div className="manage-modal-header">
+              <div className="manage-modal-title">
+                <h2>Confirm Deletion</h2>
+              </div>
+              <button className="close-btn" onClick={() => setPassToDelete(null)}>×</button>
+            </div>
+            
+            <div className="manage-modal-body">
+              <div className="delete-confirmation">
+                <p>Are you sure you want to delete the following pass?</p>
+                <div className="pass-info-preview">
+                  <div className="preview-item">
+                    <strong>Name:</strong>
+                    <span>{passToDelete.name}</span>
+                  </div>
+                  <div className="preview-item">
+                    <strong>Type:</strong>
+                    <span>{passToDelete.type === 'one-time' ? 'One-Time Pass' : 'Multiple Pass'}</span>
+                  </div>
+                </div>
+                <p className="warning-text">This action cannot be undone.</p>
+              </div>
+              
+              <div className="form-actions" style={{ marginTop: '2rem' }}>
+                <button 
+                  className="action-btn cancel-btn"
+                  onClick={() => setPassToDelete(null)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="action-btn delete-btn"
+                  onClick={confirmDeletePass}
+                >
+                  Delete
                 </button>
               </div>
             </div>

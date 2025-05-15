@@ -322,7 +322,7 @@ def main():
             type = "one-time" if one_time else "multiple-pass"
             # Get the next available ID
             new_id = max([entry['id'] for entry in data], default=0) + 1
-            expiration_time = datetime.now().isoformat() + timedelta(7)
+            expiration_time = (datetime.now() + timedelta(7)).isoformat()
             create_qr_code(qr_id=new_id, name=name, expiration_time=expiration_time, type=type)
         elif choice == 2:
             qr_id = int(input("Enter QR code ID to delete: "))

@@ -90,13 +90,13 @@ function App() {
   
   // Enforce Morse code to be one-time pass only
   useEffect(() => {
-    if (activeMethod === 'morse' && editingPass) {
+    if (activeMethod === 'morse' && editingPass && editingPass.type !== 'one-time') {
       setEditingPass({
         ...editingPass,
         type: 'one-time'
       });
     }
-  }, [activeMethod, editingPass]);
+  }, [activeMethod, editingPass?.id]);
   
   useEffect(() => {
     if (showManageModal && (activeMethod === 'qr' || activeMethod === 'morse')) {

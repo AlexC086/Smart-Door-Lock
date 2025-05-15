@@ -278,7 +278,7 @@ function App() {
             id: item.id,
             name: item.name,
             password: item.password,
-            type: item.is_one_time ? 'one-time' : 'multiple-pass',
+            type: item.type,
             creationTime: item.creation_time,
             expiryTime: item.expiration_time,
             deletionTime: item.deletion_time,

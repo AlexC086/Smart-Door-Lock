@@ -3,6 +3,7 @@ import './App.css'
 
 const RASPBERRY_PI_IP = "192.168.50.190"; // ← EDIT THIS
 const STREAM_PORT = "8080";
+const DATA_PORT = "8000";
 const STREAM_URL = `http://${RASPBERRY_PI_IP}:${STREAM_PORT}/video_feed`;
 function App() {
   // Get current date in local string format
@@ -26,7 +27,7 @@ function App() {
   
   // Separate state for each method type
   const [qrPasses, setQrPasses] = useState([
-    { id: 1, name: 'Main QR', type: 'multiple-pass', expiryTime: '2025-06-13T14:30' }
+    { }
   ])
   const [morsePasses, setMorsePasses] = useState([
     { id: 1, name: 'Guest Morse', type: 'one-time', expiryTime: '2025-05-15T18:00' }
@@ -173,8 +174,8 @@ function App() {
           bValue = b.id;
           break;
         case 'name':
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
+          aValue = a.name;
+          bValue = b.name;
           break;
         case 'type':
           aValue = a.type;
@@ -247,7 +248,7 @@ function App() {
   const update_database = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:8000/update_database', {
+      const response = await fetch(`http://${RASPBERRY_PI_IP}:${DATA_PORT}/update_database`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -276,12 +277,15 @@ function App() {
           const newPasses = data.map(item => ({
             id: item.id,
             name: item.name,
-            type: item.type,
+            password: item.password,
+            type: item.is_one_time ? 'one-time' : 'multiple-pass',
+            creationTime: item.creation_time,
             expiryTime: item.expiration_time,
+            deletionTime: item.deletion_time,
           }));
           
           setQrPasses(newPasses);
-          
+          console.log(newPasses);
           // Update next QR ID based on the highest ID in the database
           if (newPasses.length > 0) {
             const highestId = Math.max(...newPasses.map(pass => pass.id));
@@ -299,7 +303,7 @@ function App() {
   const add_entry_in_db = async (passtoAdd) => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:8000/add_entry', {
+      const response = await fetch(`http://${RASPBERRY_PI_IP}:${DATA_PORT}/add_entry`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -360,7 +364,7 @@ function App() {
           : passtoEdit.binaryPassword;
       }
 
-      const response = await fetch('http://localhost:8000/edit_entry', {
+      const response = await fetch(`http://${RASPBERRY_PI_IP}:${DATA_PORT}/edit_entry`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -381,7 +385,7 @@ function App() {
   const delete_entry_in_db = async (id) => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:8000/delete_entry', {
+      const response = await fetch(`http://${RASPBERRY_PI_IP}:${DATA_PORT}/delete_entry`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1249,7 +1253,7 @@ function App() {
                     <h3>QR Code</h3>
                     <div className="qr-code-display">
                       <img 
-                        src={`http://localhost:8000/qr_code/${previewPass.id}`} 
+                        src={`http://${RASPBERRY_PI_IP}:${DATA_PORT}/qr_code/${previewPass.id}`} 
                         alt="QR Code for Access"
                         style={{ maxWidth: "200px", margin: "20px auto", display: "block" }}
                         onLoad={() => setIsLoading(false)}

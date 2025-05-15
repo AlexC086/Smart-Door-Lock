@@ -1183,9 +1183,9 @@ function App() {
                   {((activeMethod === 'qr' && invalidQrPasses.length > 0) ||
                     (activeMethod === 'morse' && invalidMorsePasses.length > 0) ||
                     (activeMethod === 'voice' && invalidVoicePasses.length > 0)) && (
-                    <div className="passes-list" style={{ marginTop: '2rem' }}>
+                    <div className="invalid-passes-list" style={{ marginTop: '2rem' }}>
                       <h3>Invalid Passes</h3>
-                      <div className="passes-list-header">
+                      <div className="invalid-passes-list-header">
                         <span className="col-id sortable" onClick={() => handleInvalidSortClick('id')}>
                           ID {invalidSortField === 'id' && (invalidSortDirection === 'asc' ? '▲' : '▼')}
                         </span>
@@ -1195,23 +1195,23 @@ function App() {
                         <span className="col-type sortable" onClick={() => handleInvalidSortClick('type')}>
                           Type {invalidSortField === 'type' && (invalidSortDirection === 'asc' ? '▲' : '▼')}
                         </span>
-                        <span className="col-expire sortable" onClick={() => handleInvalidSortClick('deletionTime')}>
+                        <span className="col-status sortable" onClick={() => handleInvalidSortClick('deletionTime')}>
                           Status {invalidSortField === 'deletionTime' && (invalidSortDirection === 'asc' ? '▲' : '▼')}
+                        </span>
+                        <span className="col-date sortable" onClick={() => handleInvalidSortClick('deletionTime')}>
+                          Date
                         </span>
                         <span className="col-actions">Actions</span>
                       </div>
                       
                       {/* QR Invalid Passes */}
                       {activeMethod === 'qr' && getSortedInvalidPasses(invalidQrPasses).map(pass => (
-                        <div className="pass-item" key={pass.id} style={{ backgroundColor: '#f8f8f8' }}>
+                        <div className="invalid-pass-item" key={pass.id}>
                           <span className="col-id">{pass.id}</span>
                           <span className="col-name">{pass.name}</span>
                           <span className="col-type">{pass.type === 'one-time' ? 'One-Time' : 'Multiple'}</span>
-                          <span className="col-expire">
-                            {pass.deletionTime ? 
-                              `Deleted: ${new Date(pass.deletionTime).toLocaleString()}` : 
-                              `Expired: ${new Date(pass.expiryTime).toLocaleString()}`}
-                          </span>
+                          <span className="col-status">{pass.deletionTime ? 'Deleted' : 'Expired'}</span>
+                          <span className="col-date">{pass.deletionTime ? new Date(pass.deletionTime).toLocaleString() : new Date(pass.expiryTime).toLocaleString()}</span>
                           <div className="col-actions">
                             <button 
                               className="action-btn preview-btn"
@@ -1228,7 +1228,7 @@ function App() {
                       
                       {/* Morse Invalid Passes */}
                       {activeMethod === 'morse' && getSortedInvalidPasses(invalidMorsePasses).map(pass => (
-                        <div className="pass-item" key={pass.id} style={{ backgroundColor: '#f8f8f8' }}>
+                        <div className="invalid-pass-item" key={pass.id}>
                           <span className="col-id">{pass.id}</span>
                           <span className="col-name">
                             {pass.name}
@@ -1239,11 +1239,8 @@ function App() {
                             )}
                           </span>
                           <span className="col-type">One-Time</span>
-                          <span className="col-expire">
-                            {pass.deletionTime ? 
-                              `Deleted: ${new Date(pass.deletionTime).toLocaleString()}` : 
-                              `Expired: ${new Date(pass.expiryTime).toLocaleString()}`}
-                          </span>
+                          <span className="col-status">{pass.deletionTime ? 'Deleted' : 'Expired'}</span>
+                          <span className="col-date">{pass.deletionTime ? new Date(pass.deletionTime).toLocaleString() : new Date(pass.expiryTime).toLocaleString()}</span>
                           <div className="col-actions">
                             <button 
                               className="action-btn preview-btn"
@@ -1257,15 +1254,12 @@ function App() {
                       
                       {/* Voice Invalid Passes */}
                       {activeMethod === 'voice' && getSortedInvalidPasses(invalidVoicePasses).map(pass => (
-                        <div className="pass-item" key={pass.id} style={{ backgroundColor: '#f8f8f8' }}>
+                        <div className="invalid-pass-item" key={pass.id}>
                           <span className="col-id">{pass.id}</span>
                           <span className="col-name">{pass.name}</span>
                           <span className="col-type">{pass.type === 'one-time' ? 'One-Time' : 'Multiple'}</span>
-                          <span className="col-expire">
-                            {pass.deletionTime ? 
-                              `Deleted: ${new Date(pass.deletionTime).toLocaleString()}` : 
-                              `Expired: ${new Date(pass.expiryTime).toLocaleString()}`}
-                          </span>
+                          <span className="col-status">{pass.deletionTime ? 'Deleted' : 'Expired'}</span>
+                          <span className="col-date">{pass.deletionTime ? new Date(pass.deletionTime).toLocaleString() : new Date(pass.expiryTime).toLocaleString()}</span>
                           <div className="col-actions">
                             <button 
                               className="action-btn preview-btn"

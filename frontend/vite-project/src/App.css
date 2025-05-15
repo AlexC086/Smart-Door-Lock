@@ -495,7 +495,7 @@ body {
 
 .passes-list-header {
   display: grid;
-  grid-template-columns: 0.5fr 1.3fr 0.8fr 2fr 2fr;
+  grid-template-columns: 0.5fr 1.3fr 1fr 1.8fr 2fr;
   padding: 0.7rem 1.2rem;
   background-color: #f5f5f5;
   font-weight: 500;
@@ -504,7 +504,7 @@ body {
 
 .pass-item {
   display: grid;
-  grid-template-columns: 0.5fr 1.3fr 0.8fr 2fr 2fr;
+  grid-template-columns: 0.5fr 1.3fr 1fr 1.8fr 2fr;
   padding: 1rem 1.2rem;
   border-bottom: 1px solid #eee;
   align-items: center;
@@ -1245,4 +1245,54 @@ body {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Invalid Passes List */
+.invalid-passes-list {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  overflow: hidden;
+}
+
+.invalid-passes-list h3 {
+  margin: 0;
+  padding: 1.2rem;
+  font-size: 1.2rem;
+  color: #333;
+  border-bottom: 1px solid #eee;
+}
+
+.invalid-passes-list-header {
+  display: grid;
+  grid-template-columns: 0.5fr 1.5fr 1fr 1fr 2fr 1fr;
+  padding: 0.7rem 1.2rem;
+  background-color: #f5f5f5;
+  font-weight: 500;
+  color: #666;
+}
+
+.invalid-pass-item {
+  display: grid;
+  grid-template-columns: 0.5fr 1.5fr 1fr 1fr 2fr 1fr;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid #eee;
+  align-items: center;
+  transition: background-color 0.2s;
+  overflow: hidden;
+}
+.invalid-pass-item:hover {
+  background-color: #f9f9f9;
+}
+
+@media (max-width: 768px) {
+  .invalid-passes-list-header, .invalid-pass-item {
+    grid-template-columns: 1fr 1fr 1fr 1fr 1.5fr;
+    gap: 10px;
+  }
+  .invalid-pass-item .col-actions {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+    justify-content: flex-start;
+  }
 }

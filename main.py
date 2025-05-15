@@ -103,11 +103,14 @@ class LogFileHandler(FileSystemEventHandler):
         self.websocket = websocket
 
     def on_modified(self, event):
+        print(f"[DEBUG] on_modified called for: {event.src_path}")
         # Compare absolute paths as strings
         if os.path.abspath(event.src_path) == str(LOG.resolve()):
+            print("[DEBUG] Log file modified, scheduling send_updated_log")
             asyncio.create_task(self.send_updated_log())
 
     async def send_updated_log(self):
+        print("[DEBUG] send_updated_log called, sending updated log to websocket")
         current_log = load_log()
         await self.websocket.send_json(current_log)
 

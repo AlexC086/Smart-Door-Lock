@@ -36,8 +36,8 @@ class DoorUnlocker:
     def _log_action(self, action: str, action_type: str, pass_info=None):
         """Log an action to the JSON file"""
         # Format the action message to include pass info if available
-        if pass_info and "Door unlocked" in action:
-            action = f"Door unlocked by {pass_info['name']} (ID: {pass_info['id']})"
+        # if pass_info and "Door unlocked" in action:
+        #     action = f"Door unlocked by {pass_info['name']} (ID: {pass_info['id']})"
             
         entry = {
             "action": action,

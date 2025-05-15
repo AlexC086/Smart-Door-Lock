@@ -15,6 +15,9 @@ import json
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
+from pathlib import Path
+LOG = Path("door_actions.log")
+
 app = FastAPI()
 
 # Allow CORS for all origins (or specify the frontend URL)
@@ -110,6 +113,7 @@ class LogFileHandler(FileSystemEventHandler):
 @app.websocket("/ws/actions")
 async def websocket_action_log(websocket: WebSocket):
     await websocket.accept()
+    observer = None
     try:
         # Initial send
         current_log = load_log()
@@ -126,12 +130,13 @@ async def websocket_action_log(websocket: WebSocket):
             await asyncio.sleep(1)
 
     except WebSocketDisconnect:
-        observer.stop()
-        observer.join()
         print("Client disconnected")
     except Exception as e:
         print(f"Error: {e}")
     finally:
+        if observer:
+            observer.stop()
+            observer.join()
         await websocket.close()
 
 if __name__ == '__main__':

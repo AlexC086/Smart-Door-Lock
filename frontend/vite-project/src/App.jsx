@@ -89,19 +89,13 @@ function App() {
     }
   }, [activeMethod, editingPass]);
   
-  // Periodic database update for QR code passes (every 30 seconds)
   useEffect(() => {
     if (showManageModal && activeMethod === 'qr') {
       // Initial fetch when modal opens
       update_database();
-      
-      // Set up periodic updates
-      const intervalId = setInterval(() => {
-        update_database();
-      }, 30000); // 30 seconds
-      
+
       // Clean up on unmount or when modal closes
-      return () => clearInterval(intervalId);
+      return;
     }
   }, [showManageModal, activeMethod]);
   
@@ -291,6 +285,9 @@ function App() {
           if (newPasses.length > 0) {
             const highestId = Math.max(...newPasses.map(pass => pass.id));
             setNextQrId(highestId + 1);
+          } else {
+            // Set nextQrId to 1 if there are no passes
+            setNextQrId(1);
           }
         }
       }

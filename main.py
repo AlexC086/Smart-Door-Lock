@@ -1,5 +1,5 @@
 # main.py
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from Knock_pattern.binary_code import load_binary_database, add_binary_password, edit_binary_password, delete_binary_password
@@ -90,6 +90,24 @@ async def get_qr_code(qr_id: int):
 @app.get("/load_action")
 async def load_action():
     return load_log()
+
+@app.websocket("/ws/actions")
+async def websocket_action_log(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            # Send the current log whenever it updates
+            current_log = load_log()
+            await websocket.send_json(current_log)
+
+            # Add some delay to prevent overwhelming the client
+            await asyncio.sleep(1)
+    except WebSocketDisconnect:
+        print("Client disconnected")
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        await websocket.close()
 
 if __name__ == '__main__':
     import uvicorn

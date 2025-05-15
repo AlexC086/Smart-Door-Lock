@@ -122,7 +122,7 @@ async def websocket_action_log(websocket: WebSocket):
         # Set up file watcher
         event_handler = LogFileHandler(websocket)
         observer = Observer()
-        observer.schedule(event_handler, path=str(LOG.parent), recursive=False)
+        observer.schedule(event_handler, path=str(LOG), recursive=False)
         observer.start()
 
         # Keep connection alive

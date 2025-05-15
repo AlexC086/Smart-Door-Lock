@@ -16,7 +16,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from pathlib import Path
-LOG = Path("door_actions.log")
+LOG = Path("door_actions.json")
 
 app = FastAPI()
 

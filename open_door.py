@@ -12,9 +12,16 @@ from Knock_pattern.binary_code import start_recording_knocks
 LOG = 'door_actions.json'
 
 def load_log():
-    """Load the action log"""
-    with open(LOG, 'r') as f:
-        return json.load(f)
+    """Load the action log with retry on JSONDecodeError"""
+    for attempt in range(3):
+        try:
+            with open(LOG, 'r') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            if attempt < 2:
+                time.sleep(0.1)  # Wait a bit and retry
+            else:
+                return json.load(f)
 
 class DoorUnlocker:
     def __init__(self, port='/dev/ttyACM0', baudrate=9600, log_file=LOG):

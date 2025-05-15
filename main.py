@@ -85,3 +85,7 @@ async def get_qr_code(qr_id: int):
         raise HTTPException(status_code=404, detail=f"QR code image for ID {qr_id} not found")
     
     return FileResponse(qr_path)
+
+if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run(app, host='0.0.0.0', port=8000)

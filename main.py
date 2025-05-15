@@ -14,6 +14,7 @@ import asyncio
 import json
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+import time
 
 from pathlib import Path
 LOG = Path("door_actions.json")
@@ -103,12 +104,15 @@ class LogFileHandler(FileSystemEventHandler):
         self.websocket = websocket
         self.loop = loop
         self.active = True
+        self._last_sent = 0
+        self._debounce_interval = 0.3  # seconds
 
     def on_modified(self, event):
-        # print(f"[DEBUG] on_modified called for: {event.src_path}")
+        now = time.time()
         if os.path.abspath(event.src_path) == str(LOG.resolve()) and self.active:
-            # print("[DEBUG] Log file modified, scheduling send_updated_log")
-            self.loop.call_soon_threadsafe(asyncio.create_task, self.send_updated_log())
+            if now - self._last_sent > self._debounce_interval:
+                self._last_sent = now
+                self.loop.call_soon_threadsafe(asyncio.create_task, self.send_updated_log())
 
     async def send_updated_log(self):
         # print("[DEBUG] send_updated_log called, sending updated log to websocket")

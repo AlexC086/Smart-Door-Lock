@@ -101,7 +101,7 @@ function App() {
   useEffect(() => {
     if (showManageModal && (activeMethod === 'qr' || activeMethod === 'morse')) {
       // Initial fetch when modal opens for QR or Morse
-      update_database();
+      loadDataForMethod(activeMethod);
 
       // Clean up on unmount or when modal closes
       return;
@@ -157,6 +157,30 @@ function App() {
     };
   }, []);
 
+  // Load data for QR and Morse codes when component mounts
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        // Set loading state while we fetch data
+        setIsLoading(true);
+        
+        // Load QR code data
+        await loadDataForMethod('qr');
+        
+        // Load Morse code data
+        await loadDataForMethod('morse');
+        
+        console.log('Initial data loaded successfully');
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadInitialData();
+  }, []); // Empty dependency array means this runs once on component mount
+  
   // Check for expired voice passes when component loads or when voicePasses changes
   useEffect(() => {
     const currentTime = new Date().getTime();
@@ -400,6 +424,97 @@ function App() {
     return parseMorseUnits(morseString).length;
   };
 
+  // Function to load data for a specific method
+  const loadDataForMethod = async (method) => {
+    try {
+      const response = await fetch(`http://${RASPBERRY_PI_IP}:${DATA_PORT}/update_database`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          method: method,
+        })
+      });
+
+      if (response.ok) {
+        let data = await response.json();
+        
+        if (method === "morse") {
+          const mappedPasses = data.map(item => ({
+            id: item.id,
+            name: item.name,
+            type: 'one-time',
+            expiryTime: item.expiration_time,
+            morsePassword: item.knock_password,
+            binaryPassword: item.password,
+            knockPassword: item.knock_password.substring(0, item.knock_password.length-1),
+            deletionTime: item.deletion_time
+          }));
+          
+          // Get current time for expiry check
+          const currentTime = new Date().getTime();
+          
+          // Filter passes
+          const validPasses = mappedPasses.filter(pass => {
+            return pass.deletionTime === null && new Date(pass.expiryTime).getTime() > currentTime;
+          });
+          
+          const invalidPasses = mappedPasses.filter(pass => {
+            return pass.deletionTime !== null || new Date(pass.expiryTime).getTime() <= currentTime;
+          });
+          
+          setMorsePasses(validPasses);
+          setInvalidMorsePasses(invalidPasses);
+          
+          // Update next Morse ID
+          if (mappedPasses.length > 0) {
+            const highestId = Math.max(...mappedPasses.map(pass => pass.id));
+            setNextMorseId(highestId + 1);
+          } else {
+            setNextMorseId(1);
+          }
+        } 
+        else if (method === "qr") {
+          const mappedPasses = data.map(item => ({
+            id: item.id,
+            name: item.name,
+            password: item.password,
+            type: item.type,
+            creationTime: item.creation_time,
+            expiryTime: item.expiration_time,
+            deletionTime: item.deletion_time,
+          }));
+          
+          // Get current time for expiry check
+          const currentTime = new Date().getTime();
+          
+          // Filter passes
+          const validPasses = mappedPasses.filter(pass => {
+            return pass.deletionTime === null && new Date(pass.expiryTime).getTime() > currentTime;
+          });
+          
+          const invalidPasses = mappedPasses.filter(pass => {
+            return pass.deletionTime !== null || new Date(pass.expiryTime).getTime() <= currentTime;
+          });
+          
+          setQrPasses(validPasses);
+          setInvalidQrPasses(invalidPasses);
+          
+          // Update next QR ID
+          if (mappedPasses.length > 0) {
+            const highestId = Math.max(...mappedPasses.map(pass => pass.id));
+            setNextQrId(highestId + 1);
+          } else {
+            setNextQrId(1);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error loading data for ${method}:`, error);
+    }
+  };
+
   // Get the nearest expiring pass for a method
   const getNearestExpiringPass = (method) => {
     let passes;
@@ -436,98 +551,8 @@ function App() {
   const update_database = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`http://${RASPBERRY_PI_IP}:${DATA_PORT}/update_database`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          method: activeMethod,
-        })});
-
-      if (response.ok) {
-        let data = await response.json();
-        // Update morse code database
-        if (activeMethod === "morse"){
-          const mappedPasses = data.map(item => ({
-            id: item.id,
-            name: item.name,
-            type: 'one-time',
-            expiryTime: item.expiration_time,
-            morsePassword: item.knock_password,
-            binaryPassword: item.password,
-            knockPassword: item.knock_password.substring(0, item.knock_password.length-1),
-            deletionTime: item.deletion_time
-          }));
-          
-          // Get current time for expiry check
-          const currentTime = new Date().getTime();
-          
-          // Filter passes: 
-          // - Valid: deletionTime is null AND not expired
-          // - Invalid: deletionTime is not null OR expired
-          const validPasses = mappedPasses.filter(pass => {
-            return pass.deletionTime === null && new Date(pass.expiryTime).getTime() > currentTime;
-          });
-          
-          const invalidPasses = mappedPasses.filter(pass => {
-            return pass.deletionTime !== null || new Date(pass.expiryTime).getTime() <= currentTime;
-          });
-          
-          setMorsePasses(validPasses);
-          setInvalidMorsePasses(invalidPasses);
-          console.log("Valid morse passes:", validPasses);
-          console.log("Invalid morse passes:", invalidPasses);
-          
-          // Update next Morse ID based on the highest ID in all passes
-          if (mappedPasses.length > 0) {
-            const highestId = Math.max(...mappedPasses.map(pass => pass.id));
-            setNextMorseId(highestId + 1);
-          } else {
-            // Set nextMorseId to 1 if there are no passes
-            setNextMorseId(1);
-          }
-        }          // Update QR code database
-        else if (activeMethod === "qr") {
-          const mappedPasses = data.map(item => ({
-            id: item.id,
-            name: item.name,
-            password: item.password,
-            type: item.type,
-            creationTime: item.creation_time,
-            expiryTime: item.expiration_time,
-            deletionTime: item.deletion_time,
-          }));
-          
-          // Get current time for expiry check
-          const currentTime = new Date().getTime();
-          
-          // Filter passes: 
-          // - Valid: deletionTime is null AND not expired
-          // - Invalid: deletionTime is not null OR expired
-          const validPasses = mappedPasses.filter(pass => {
-            return pass.deletionTime === null && new Date(pass.expiryTime).getTime() > currentTime;
-          });
-          
-          const invalidPasses = mappedPasses.filter(pass => {
-            return pass.deletionTime !== null || new Date(pass.expiryTime).getTime() <= currentTime;
-          });
-          
-          setQrPasses(validPasses);
-          setInvalidQrPasses(invalidPasses);
-          console.log("Valid passes:", validPasses);
-          console.log("Invalid passes:", invalidPasses);
-          
-          // Update next QR ID based on the highest ID in all passes
-          if (mappedPasses.length > 0) {
-            const highestId = Math.max(...mappedPasses.map(pass => pass.id));
-            setNextQrId(highestId + 1);
-          } else {
-            // Set nextQrId to 1 if there are no passes
-            setNextQrId(1);
-          }
-        }
-      }
+      // Use the loadDataForMethod function to load data for the active method
+      await loadDataForMethod(activeMethod);
     } catch (error) {
       console.error('Error updating database:', error);
     } finally {
@@ -872,8 +897,8 @@ function App() {
                   setEditingPass(null);
                   setIsCreatingPass(false);
                   setShowManageModal(true);
-                  // Fetch the latest QR codes from database
-                  setTimeout(() => update_database(), 100);
+                  // Refresh data when opening modal
+                  loadDataForMethod('qr');
                 }}>Manage</button>
               </div>
             </div>
@@ -895,6 +920,8 @@ function App() {
                   setMorsePassword('');
                   setMorseCreationStep(0);
                   setShowManageModal(true);
+                  // Refresh data when opening modal
+                  loadDataForMethod('morse');
                 }}>Manage</button>
               </div>
             </div>
@@ -914,6 +941,7 @@ function App() {
                   setEditingPass(null);
                   setIsCreatingPass(false);
                   setShowManageModal(true);
+                  // Note: Voice backend not implemented yet
                 }}>Manage</button>
               </div>
             </div>

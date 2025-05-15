@@ -11,7 +11,7 @@ from Knock_pattern.binary_code import start_recording_knocks
 
 LOG = 'door_actions.json'
 
-def load_log(self):
+def load_log():
     """Load the action log"""
     with open(LOG, 'r') as f:
         return json.load(f)

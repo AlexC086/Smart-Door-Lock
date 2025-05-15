@@ -99,16 +99,16 @@ async def load_action():
     return load_log()
 
 class LogFileHandler(FileSystemEventHandler):
-    def __init__(self, websocket):
+    def __init__(self, websocket, loop):
         self.websocket = websocket
+        self.loop = loop
 
     def on_modified(self, event):
         print(f"[DEBUG] on_modified called for: {event.src_path}")
         # Compare absolute paths as strings
         if os.path.abspath(event.src_path) == str(LOG.resolve()):
             print("[DEBUG] Log file modified, scheduling send_updated_log")
-            loop = asyncio.get_event_loop()
-            loop.call_soon_threadsafe(asyncio.create_task, self.send_updated_log())
+            self.loop.call_soon_threadsafe(asyncio.create_task, self.send_updated_log())
 
     async def send_updated_log(self):
         print("[DEBUG] send_updated_log called, sending updated log to websocket")
@@ -124,8 +124,9 @@ async def websocket_action_log(websocket: WebSocket):
         current_log = load_log()
         await websocket.send_json(current_log)
 
-        # Set up file watcher
-        event_handler = LogFileHandler(websocket)
+        # Set up file watcher with main event loop
+        loop = asyncio.get_running_loop()
+        event_handler = LogFileHandler(websocket, loop)
         observer = Observer()
         observer.schedule(event_handler, path=str(LOG.parent), recursive=False)
         observer.start()

@@ -277,16 +277,17 @@ function App() {
   }
   
   // Function to handle sorting of invalid passes
-  const handleInvalidSortClick = (field) => {
-    // If clicking the same field, toggle direction
-    if (invalidSortField === field) {
-      setInvalidSortDirection(invalidSortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      // If clicking a new field, set it as the sort field and default to ascending
-      setInvalidSortField(field);
-      setInvalidSortDirection('asc');
-    }
+const handleInvalidSortClick = (field) => {
+  // If clicking the same field, toggle direction
+  if (invalidSortField === field) {
+    setInvalidSortDirection(invalidSortDirection === 'asc' ? 'desc' : 'asc');
+  } else {
+    // If clicking a new field, set it as the sort field and default to ascending
+    setInvalidSortField(field);
+    // Default to descending for date fields, ascending for others
+    setInvalidSortDirection(field === 'deletionTime' ? 'desc' : 'asc');
   }
+}
   
   // Function to sort passes based on current sort field and direction
   const getSortedPasses = (passes) => {
@@ -351,6 +352,11 @@ function App() {
         case 'type':
           aValue = a.type;
           bValue = b.type;
+          break;
+        case 'status':
+          // Sort by status text ('Deleted' or 'Expired')
+          aValue = a.deletionTime ? 'Deleted' : 'Expired';
+          bValue = b.deletionTime ? 'Deleted' : 'Expired';
           break;
         case 'deletionTime':
           // If we have deletion time, use it, otherwise use expiry time
@@ -1195,11 +1201,11 @@ function App() {
                         <span className="col-type sortable" onClick={() => handleInvalidSortClick('type')}>
                           Type {invalidSortField === 'type' && (invalidSortDirection === 'asc' ? '▲' : '▼')}
                         </span>
-                        <span className="col-status sortable" onClick={() => handleInvalidSortClick('deletionTime')}>
-                          Status {invalidSortField === 'deletionTime' && (invalidSortDirection === 'asc' ? '▲' : '▼')}
+                        <span className="col-status sortable" onClick={() => handleInvalidSortClick('status')}>
+                          Status {invalidSortField === 'status' && (invalidSortDirection === 'asc' ? '▲' : '▼')}
                         </span>
                         <span className="col-date sortable" onClick={() => handleInvalidSortClick('deletionTime')}>
-                          Date
+                          Date {invalidSortField === 'deletionTime' && (invalidSortDirection === 'asc' ? '▲' : '▼')}
                         </span>
                         <span className="col-actions">Actions</span>
                       </div>

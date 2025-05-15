@@ -129,7 +129,7 @@ function App() {
               id: idx + 1, // or use a better unique id if available
               date: dateObj.toLocaleDateString(),
               time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), // include seconds
-              message: item.action,
+              message: `${item.action}${item.action === "Door unlocked" ? ` (ID: ${item.pass_id}) ${item.pass_name}` : ''}`,
               method: item.action_type
             };
           });
@@ -708,9 +708,9 @@ const handleInvalidSortClick = (field) => {
     setIsCreatingPass(false);
     
     // Add notice for new pass creation
-    const methodName = activeMethod === 'qr' ? 'QR Code' : 
-                     activeMethod === 'morse' ? 'Morse Code' : 'Voice';
-    addNotice(`New ${pass.type} created`, methodName);
+    // const methodName = activeMethod === 'qr' ? 'QR Code' : 
+    //                  activeMethod === 'morse' ? 'Morse Code' : 'Voice';
+    // addNotice(`New ${pass.type} created`, methodName);
   };
 
   // Show delete confirmation

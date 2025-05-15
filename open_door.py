@@ -49,6 +49,9 @@ class DoorUnlocker:
         if pass_info:
             entry["pass_id"] = pass_info['id']
             entry["pass_name"] = pass_info['name']
+        else:
+            entry["pass_id"] = None
+            entry["pass_name"] = None
 
         # Read existing data if file exists
         existing_data = []

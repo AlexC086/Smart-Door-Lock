@@ -14,7 +14,7 @@ LOG = 'door_actions.json'
 class DoorUnlocker:
     def __init__(self, port='/dev/ttyACM0', baudrate=9600, log_file=LOG):
         if not os.path.exists(LOG):
-            with open(QR_DATABASE, 'w') as f:
+            with open(LOG, 'w') as f:
                 json.dump([], f)
         self.ser = serial.Serial(port, baudrate, timeout=1)
         self.log_file = Path(log_file)

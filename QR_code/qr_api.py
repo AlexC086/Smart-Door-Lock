@@ -116,12 +116,12 @@ def get_qr_code_path(qr_id):
     data = load_database()
     
     for entry in data:
-        if entry['id'] == qr_id and entry['deletion_time'] is None:
+        if entry['id'] == qr_id:  # Removed condition for deletion_time being None
             qr_file = entry.get('qr_code_file')
             if qr_file:
                 return os.path.join(QR_CODE_DIR, qr_file)
     
-    return None  # QR code not found or already deleted
+    return None  # QR code not found
 
 def verify_qr_code(password):
     """Verify if a QR code is valid"""

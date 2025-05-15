@@ -10,6 +10,10 @@ from pydantic import BaseModel
 import json
 import datetime
 import os
+import asyncio
+import json
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
 app = FastAPI()
 
@@ -91,18 +95,39 @@ async def get_qr_code(qr_id: int):
 async def load_action():
     return load_log()
 
+class LogFileHandler(FileSystemEventHandler):
+    def __init__(self, websocket):
+        self.websocket = websocket
+
+    def on_modified(self, event):
+        if event.src_path == LOG:
+            asyncio.create_task(self.send_updated_log())
+
+    async def send_updated_log(self):
+        current_log = load_log()
+        await self.websocket.send_json(current_log)
+
 @app.websocket("/ws/actions")
 async def websocket_action_log(websocket: WebSocket):
     await websocket.accept()
     try:
-        while True:
-            # Send the current log whenever it updates
-            current_log = load_log()
-            await websocket.send_json(current_log)
+        # Initial send
+        current_log = load_log()
+        await websocket.send_json(current_log)
 
-            # Add some delay to prevent overwhelming the client
+        # Set up file watcher
+        event_handler = LogFileHandler(websocket)
+        observer = Observer()
+        observer.schedule(event_handler, path=str(LOG.parent), recursive=False)
+        observer.start()
+
+        # Keep connection alive
+        while True:
             await asyncio.sleep(1)
+
     except WebSocketDisconnect:
+        observer.stop()
+        observer.join()
         print("Client disconnected")
     except Exception as e:
         print(f"Error: {e}")

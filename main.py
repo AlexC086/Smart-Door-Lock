@@ -107,7 +107,8 @@ class LogFileHandler(FileSystemEventHandler):
         # Compare absolute paths as strings
         if os.path.abspath(event.src_path) == str(LOG.resolve()):
             print("[DEBUG] Log file modified, scheduling send_updated_log")
-            asyncio.create_task(self.send_updated_log())
+            loop = asyncio.get_event_loop()
+            loop.call_soon_threadsafe(asyncio.create_task, self.send_updated_log())
 
     async def send_updated_log(self):
         print("[DEBUG] send_updated_log called, sending updated log to websocket")

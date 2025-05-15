@@ -83,7 +83,7 @@ def create_qr_code(qr_id, name, expiration_time, type="one-time"):
     data.append(new_entry)
     save_database(data)
 
-    print(f"\nCreated new QR code with ID: {new_id}")
+    print(f"\nCreated new QR code with ID: {qr_id}")
     print(f"Password: {password}")
     print(f"QR code saved as: {qr_filename}\n")
 

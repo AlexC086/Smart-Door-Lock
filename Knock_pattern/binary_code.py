@@ -16,7 +16,7 @@ threshold = 0.3  # Amplitude threshold for detection
 min_silence = 0.1  # Minimum silence duration between knocks (seconds)
 min_knock_duration = 0.05  # Minimum knock duration (seconds)
 bit_threshold = 0.6  # Silence duration threshold for 0/1 (seconds)
-DATABASE = "binary_password.json"
+DATABASE = os.path.join(os.path.dirname(__file__), "binary_password.json")
 
 ''' Database Related Codes '''
 def load_binary_database():

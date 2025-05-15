@@ -102,18 +102,22 @@ class LogFileHandler(FileSystemEventHandler):
     def __init__(self, websocket, loop):
         self.websocket = websocket
         self.loop = loop
+        self.active = True
 
     def on_modified(self, event):
         print(f"[DEBUG] on_modified called for: {event.src_path}")
-        # Compare absolute paths as strings
-        if os.path.abspath(event.src_path) == str(LOG.resolve()):
+        if os.path.abspath(event.src_path) == str(LOG.resolve()) and self.active:
             print("[DEBUG] Log file modified, scheduling send_updated_log")
             self.loop.call_soon_threadsafe(asyncio.create_task, self.send_updated_log())
 
     async def send_updated_log(self):
         print("[DEBUG] send_updated_log called, sending updated log to websocket")
         current_log = load_log()
-        await self.websocket.send_json(current_log)
+        try:
+            await self.websocket.send_json(current_log)
+        except Exception as e:
+            print(f"[DEBUG] Exception in send_updated_log: {e}")
+            self.active = False
 
 @app.websocket("/ws/actions")
 async def websocket_action_log(websocket: WebSocket):

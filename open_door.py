@@ -11,6 +11,11 @@ from Knock_pattern.binary_code import start_recording_knocks
 
 LOG = 'door_actions.json'
 
+def load_log(self):
+    """Load the action log"""
+    with open(LOG, 'r') as f:
+        return json.load(f)
+
 class DoorUnlocker:
     def __init__(self, port='/dev/ttyACM0', baudrate=9600, log_file=LOG):
         if not os.path.exists(LOG):

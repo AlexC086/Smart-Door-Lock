@@ -3,7 +3,8 @@ from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from Knock_pattern.binary_code import load_binary_database, add_binary_password, edit_binary_password, delete_binary_password
-from QR_code.qr_code_livestream import load_database as load_qr_database, create_qr_code, edit_qr_code, delete_qr_code, get_qr_code_path
+from QR_code.qr_code_livestream import load_database as load_qr_database, create_qr_code, edit_qr_code, delete_qr_code, get_qr_code_pat
+from open_door import load_log
 from typing import Optional, List
 from pydantic import BaseModel
 import json
@@ -85,6 +86,10 @@ async def get_qr_code(qr_id: int):
         raise HTTPException(status_code=404, detail=f"QR code image for ID {qr_id} not found")
     
     return FileResponse(qr_path)
+
+@app.get("/update_action")
+async def load_action():
+    return load_action()
 
 if __name__ == '__main__':
     import uvicorn

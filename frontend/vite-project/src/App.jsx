@@ -30,12 +30,15 @@ function App() {
   const [qrPasses, setQrPasses] = useState([
     { }
   ])
+  const [invalidQrPasses, setInvalidQrPasses] = useState([]) // Track deleted QR passes
   const [morsePasses, setMorsePasses] = useState([
     { id: 1, name: 'Guest Morse', type: 'one-time', expiryTime: '2025-05-15T18:00' }
   ])
+  const [invalidMorsePasses, setInvalidMorsePasses] = useState([]) // Track deleted/expired Morse passes
   const [voicePasses, setVoicePasses] = useState([
     { id: 1, name: 'Voice Pass', type: 'multiple-pass', expiryTime: '2025-06-10T10:00' }
   ])
+  const [invalidVoicePasses, setInvalidVoicePasses] = useState([]) // Track deleted/expired Voice passes
   
   // Track the highest ID for each pass type
   const [nextQrId, setNextQrId] = useState(2)
@@ -44,8 +47,14 @@ function App() {
   
   const [editingPass, setEditingPass] = useState(null)
   const [isCreatingPass, setIsCreatingPass] = useState(false)
+  
+  // Sorting state for valid passes
   const [sortField, setSortField] = useState('name') // Default sort by name
   const [sortDirection, setSortDirection] = useState('asc') // Default sort direction
+  
+  // Sorting state for invalid passes
+  const [invalidSortField, setInvalidSortField] = useState('deletionTime') // Default sort by deletion time
+  const [invalidSortDirection, setInvalidSortDirection] = useState('desc') // Default sort direction (newest first)
   
   // States for Morse code password creation
   const [morsePassword, setMorsePassword] = useState('')
@@ -90,14 +99,37 @@ function App() {
   }, [activeMethod, editingPass]);
   
   useEffect(() => {
-    if (showManageModal && activeMethod === 'qr') {
-      // Initial fetch when modal opens
+    if (showManageModal && (activeMethod === 'qr' || activeMethod === 'morse')) {
+      // Initial fetch when modal opens for QR or Morse
       update_database();
 
       // Clean up on unmount or when modal closes
       return;
     }
   }, [showManageModal, activeMethod]);
+  
+  // Check for expired voice passes when component loads or when voicePasses changes
+  useEffect(() => {
+    const currentTime = new Date().getTime();
+    
+    // Find expired voice passes
+    const expiredVoicePasses = voicePasses.filter(pass => {
+      return new Date(pass.expiryTime).getTime() <= currentTime;
+    });
+    
+    if (expiredVoicePasses.length > 0) {
+      // Remove expired passes from valid passes
+      setVoicePasses(voicePasses.filter(pass => {
+        return new Date(pass.expiryTime).getTime() > currentTime;
+      }));
+      
+      // Add expired passes to invalid passes
+      setInvalidVoicePasses(prev => [...prev, ...expiredVoicePasses.map(pass => ({
+        ...pass,
+        deletionTime: null // No deletion time, but expired
+      }))]);
+    }
+  }, [voicePasses]);
   
   // Get method details based on activeMethod
   const getMethodDetails = () => {
@@ -143,7 +175,21 @@ function App() {
     }
   }
   
-  // Function to handle sorting of passes
+  // Helper function to get the current invalid passes based on method
+  const getInvalidPasses = () => {
+    switch(activeMethod) {
+      case 'qr':
+        return invalidQrPasses;
+      case 'morse':
+        return invalidMorsePasses;
+      case 'voice':
+        return invalidVoicePasses;
+      default:
+        return [];
+    }
+  }
+  
+  // Function to handle sorting of valid passes
   const handleSortClick = (field) => {
     // If clicking the same field, toggle direction
     if (sortField === field) {
@@ -152,6 +198,18 @@ function App() {
       // If clicking a new field, set it as the sort field and default to ascending
       setSortField(field);
       setSortDirection('asc');
+    }
+  }
+  
+  // Function to handle sorting of invalid passes
+  const handleInvalidSortClick = (field) => {
+    // If clicking the same field, toggle direction
+    if (invalidSortField === field) {
+      setInvalidSortDirection(invalidSortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // If clicking a new field, set it as the sort field and default to ascending
+      setInvalidSortField(field);
+      setInvalidSortDirection('asc');
     }
   }
   
@@ -169,8 +227,8 @@ function App() {
           bValue = b.id;
           break;
         case 'name':
-          aValue = a.name;
-          bValue = b.name;
+          aValue = a.name ? a.name.toLowerCase() : '';
+          bValue = b.name ? b.name.toLowerCase() : '';
           break;
         case 'type':
           aValue = a.type;
@@ -180,9 +238,13 @@ function App() {
           aValue = new Date(a.expiryTime).getTime();
           bValue = new Date(b.expiryTime).getTime();
           break;
+        case 'deletionTime':
+          aValue = a.deletionTime ? new Date(a.deletionTime).getTime() : 0;
+          bValue = b.deletionTime ? new Date(b.deletionTime).getTime() : 0;
+          break;
         default:
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
+          aValue = a.name ? a.name.toLowerCase() : '';
+          bValue = b.name ? a.name.toLowerCase() : '';
       }
       
       // Sort based on direction
@@ -194,6 +256,56 @@ function App() {
     });
   }
 
+  // Function to sort invalid passes based on invalid sort field and direction
+  const getSortedInvalidPasses = (passes) => {
+    if (!passes || passes.length === 0) return [];
+    
+    return [...passes].sort((a, b) => {
+      let aValue, bValue;
+      
+      // Get the values to compare based on the sort field
+      switch(invalidSortField) {
+        case 'id':
+          aValue = a.id;
+          bValue = b.id;
+          break;
+        case 'name':
+          aValue = a.name ? a.name.toLowerCase() : '';
+          bValue = b.name ? b.name.toLowerCase() : '';
+          break;
+        case 'type':
+          aValue = a.type;
+          bValue = b.type;
+          break;
+        case 'deletionTime':
+          // If we have deletion time, use it, otherwise use expiry time
+          aValue = a.deletionTime ? 
+            new Date(a.deletionTime).getTime() : 
+            new Date(a.expiryTime).getTime();
+          
+          bValue = b.deletionTime ? 
+            new Date(b.deletionTime).getTime() : 
+            new Date(b.expiryTime).getTime();
+          break;
+        default:
+          // Default to sorting by status time (deletion or expiry)
+          aValue = a.deletionTime ? 
+            new Date(a.deletionTime).getTime() : 
+            new Date(a.expiryTime).getTime();
+          
+          bValue = b.deletionTime ? 
+            new Date(b.deletionTime).getTime() : 
+            new Date(b.expiryTime).getTime();
+      }
+      
+      // Sort based on direction
+      if (invalidSortDirection === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+  }
 
   // Convert Morse code to binary (. = 0, ._ = 1)
   const convertMorseToBinary = (morseCode) => {
@@ -256,7 +368,7 @@ function App() {
         let data = await response.json();
         // Update morse code database
         if (activeMethod === "morse"){
-          const newPasses = data.map(item => ({
+          const mappedPasses = data.map(item => ({
             id: item.id,
             name: item.name,
             type: 'one-time',
@@ -264,12 +376,39 @@ function App() {
             morsePassword: item.knock_password,
             binaryPassword: item.password,
             knockPassword: item.knock_password.substring(0, item.knock_password.length-1),
+            deletionTime: item.deletion_time
           }));
-
-          setMorsePasses(newPasses);
+          
+          // Get current time for expiry check
+          const currentTime = new Date().getTime();
+          
+          // Filter passes: 
+          // - Valid: deletionTime is null AND not expired
+          // - Invalid: deletionTime is not null OR expired
+          const validPasses = mappedPasses.filter(pass => {
+            return pass.deletionTime === null && new Date(pass.expiryTime).getTime() > currentTime;
+          });
+          
+          const invalidPasses = mappedPasses.filter(pass => {
+            return pass.deletionTime !== null || new Date(pass.expiryTime).getTime() <= currentTime;
+          });
+          
+          setMorsePasses(validPasses);
+          setInvalidMorsePasses(invalidPasses);
+          console.log("Valid morse passes:", validPasses);
+          console.log("Invalid morse passes:", invalidPasses);
+          
+          // Update next Morse ID based on the highest ID in all passes
+          if (mappedPasses.length > 0) {
+            const highestId = Math.max(...mappedPasses.map(pass => pass.id));
+            setNextMorseId(highestId + 1);
+          } else {
+            // Set nextMorseId to 1 if there are no passes
+            setNextMorseId(1);
+          }
         }          // Update QR code database
         else if (activeMethod === "qr") {
-          const newPasses = data.map(item => ({
+          const mappedPasses = data.map(item => ({
             id: item.id,
             name: item.name,
             password: item.password,
@@ -279,11 +418,28 @@ function App() {
             deletionTime: item.deletion_time,
           }));
           
-          setQrPasses(newPasses);
-          console.log(newPasses);
-          // Update next QR ID based on the highest ID in the database
-          if (newPasses.length > 0) {
-            const highestId = Math.max(...newPasses.map(pass => pass.id));
+          // Get current time for expiry check
+          const currentTime = new Date().getTime();
+          
+          // Filter passes: 
+          // - Valid: deletionTime is null AND not expired
+          // - Invalid: deletionTime is not null OR expired
+          const validPasses = mappedPasses.filter(pass => {
+            return pass.deletionTime === null && new Date(pass.expiryTime).getTime() > currentTime;
+          });
+          
+          const invalidPasses = mappedPasses.filter(pass => {
+            return pass.deletionTime !== null || new Date(pass.expiryTime).getTime() <= currentTime;
+          });
+          
+          setQrPasses(validPasses);
+          setInvalidQrPasses(invalidPasses);
+          console.log("Valid passes:", validPasses);
+          console.log("Invalid passes:", invalidPasses);
+          
+          // Update next QR ID based on the highest ID in all passes
+          if (mappedPasses.length > 0) {
+            const highestId = Math.max(...mappedPasses.map(pass => pass.id));
             setNextQrId(highestId + 1);
           } else {
             // Set nextQrId to 1 if there are no passes
@@ -471,7 +627,19 @@ function App() {
     } else if (activeMethod === 'morse') {
       delete_entry_in_db(id);
     } else if (activeMethod === 'voice') {
-      setVoicePasses(voicePasses.filter(pass => pass.id !== id));
+      // For voice passes, we'll do a soft delete by marking with deletionTime
+      const passToMarkDeleted = voicePasses.find(pass => pass.id === id);
+      if (passToMarkDeleted) {
+        // Remove from valid passes
+        setVoicePasses(voicePasses.filter(pass => pass.id !== id));
+        
+        // Add to invalid passes with current deletion time
+        const deletedPass = {
+          ...passToMarkDeleted,
+          deletionTime: new Date().toISOString()
+        };
+        setInvalidVoicePasses([...invalidVoicePasses, deletedPass]);
+      }
     }
     
     if (editingPass && editingPass.id === id) {
@@ -899,6 +1067,106 @@ function App() {
                         </div>
                     ))}
                   </div>
+
+                  {/* Invalid Passes Section - Shown for all methods when there are invalid passes */}
+                  {((activeMethod === 'qr' && invalidQrPasses.length > 0) ||
+                    (activeMethod === 'morse' && invalidMorsePasses.length > 0) ||
+                    (activeMethod === 'voice' && invalidVoicePasses.length > 0)) && (
+                    <div className="passes-list" style={{ marginTop: '2rem' }}>
+                      <h3>Invalid Passes</h3>
+                      <div className="passes-list-header">
+                        <span className="col-id sortable" onClick={() => handleInvalidSortClick('id')}>
+                          ID {invalidSortField === 'id' && (invalidSortDirection === 'asc' ? '▲' : '▼')}
+                        </span>
+                        <span className="col-name sortable" onClick={() => handleInvalidSortClick('name')}>
+                          Name {invalidSortField === 'name' && (invalidSortDirection === 'asc' ? '▲' : '▼')}
+                        </span>
+                        <span className="col-type sortable" onClick={() => handleInvalidSortClick('type')}>
+                          Type {invalidSortField === 'type' && (invalidSortDirection === 'asc' ? '▲' : '▼')}
+                        </span>
+                        <span className="col-expire sortable" onClick={() => handleInvalidSortClick('deletionTime')}>
+                          Status {invalidSortField === 'deletionTime' && (invalidSortDirection === 'asc' ? '▲' : '▼')}
+                        </span>
+                        <span className="col-actions">Actions</span>
+                      </div>
+                      
+                      {/* QR Invalid Passes */}
+                      {activeMethod === 'qr' && getSortedInvalidPasses(invalidQrPasses).map(pass => (
+                        <div className="pass-item" key={pass.id} style={{ backgroundColor: '#f8f8f8' }}>
+                          <span className="col-id">{pass.id}</span>
+                          <span className="col-name">{pass.name}</span>
+                          <span className="col-type">{pass.type === 'one-time' ? 'One-Time' : 'Multiple'}</span>
+                          <span className="col-expire">
+                            {pass.deletionTime ? 
+                              `Deleted: ${new Date(pass.deletionTime).toLocaleString()}` : 
+                              `Expired: ${new Date(pass.expiryTime).toLocaleString()}`}
+                          </span>
+                          <div className="col-actions">
+                            <button 
+                              className="action-btn preview-btn"
+                              onClick={() => {
+                                setPreviewPass(pass);
+                                setIsLoading(true);
+                              }}
+                            >
+                              Preview
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* Morse Invalid Passes */}
+                      {activeMethod === 'morse' && getSortedInvalidPasses(invalidMorsePasses).map(pass => (
+                        <div className="pass-item" key={pass.id} style={{ backgroundColor: '#f8f8f8' }}>
+                          <span className="col-id">{pass.id}</span>
+                          <span className="col-name">
+                            {pass.name}
+                            {pass.morsePassword && (
+                              <span className="morse-mini-code" title={`Complete: ${pass.morsePassword}, Binary: ${pass.binaryPassword}`}>
+                                {pass.morsePassword}
+                              </span>
+                            )}
+                          </span>
+                          <span className="col-type">One-Time</span>
+                          <span className="col-expire">
+                            {pass.deletionTime ? 
+                              `Deleted: ${new Date(pass.deletionTime).toLocaleString()}` : 
+                              `Expired: ${new Date(pass.expiryTime).toLocaleString()}`}
+                          </span>
+                          <div className="col-actions">
+                            <button 
+                              className="action-btn preview-btn"
+                              onClick={() => setPreviewPass(pass)}
+                            >
+                              Preview
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* Voice Invalid Passes */}
+                      {activeMethod === 'voice' && getSortedInvalidPasses(invalidVoicePasses).map(pass => (
+                        <div className="pass-item" key={pass.id} style={{ backgroundColor: '#f8f8f8' }}>
+                          <span className="col-id">{pass.id}</span>
+                          <span className="col-name">{pass.name}</span>
+                          <span className="col-type">{pass.type === 'one-time' ? 'One-Time' : 'Multiple'}</span>
+                          <span className="col-expire">
+                            {pass.deletionTime ? 
+                              `Deleted: ${new Date(pass.deletionTime).toLocaleString()}` : 
+                              `Expired: ${new Date(pass.expiryTime).toLocaleString()}`}
+                          </span>
+                          <div className="col-actions">
+                            <button 
+                              className="action-btn preview-btn"
+                              onClick={() => setPreviewPass(pass)}
+                            >
+                              Preview
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="pass-edit-form">

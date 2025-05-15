@@ -107,7 +107,56 @@ function App() {
       return;
     }
   }, [showManageModal, activeMethod]);
-  
+
+    // WebSocket for real-time notices
+  useEffect(() => {
+    const ws = new WebSocket(`ws://${RASPBERRY_PI_IP}:${DATA_PORT}/ws/actions`);
+
+    ws.onopen = () => {
+      console.log('WebSocket connection established');
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (Array.isArray(data)) {
+          // Map backend format to notices format
+          const newNotices = data.map((item, idx) => {
+            const dateObj = new Date(item.action_time);
+            return {
+              id: idx + 1, // or use a better unique id if available
+              date: dateObj.toLocaleDateString(),
+              time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), // include seconds
+              message: item.action,
+              method: item.action_type
+            };
+          });
+          // Sort by action_time descending (latest first)
+          newNotices.sort((a, b) => {
+            const aTime = new Date(data[a.id - 1].action_time).getTime();
+            const bTime = new Date(data[b.id - 1].action_time).getTime();
+            return bTime - aTime;
+          });
+          setNotices(newNotices);
+        }
+      } catch (err) {
+        console.error('WebSocket message error:', err);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    ws.onerror = (err) => {
+      console.error('WebSocket error:', err);
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, []);
+
   // Check for expired voice passes when component loads or when voicePasses changes
   useEffect(() => {
     const currentTime = new Date().getTime();

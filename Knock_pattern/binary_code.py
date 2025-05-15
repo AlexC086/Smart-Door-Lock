@@ -150,11 +150,17 @@ def plot_detection(signal, knocks, binary_str, channel=0):
     plt.close()
 
 
-def check_binary_password(password, binary_str):
+def check_binary_password(password, binary_str, item=None):
     if password in binary_str:
-        return True
+        if item:
+            pass_info = {
+                'id': item['id'],
+                'name': item['name']
+            }
+            return True, pass_info
+        return True, None
     else:
-        return False
+        return False, None
 
 
 def audio_callback(indata, frames, time, status):
@@ -192,6 +198,7 @@ def record_audio(duration, channels=1, device=None):
 def start_recording_knocks():
     current_time = datetime.datetime.now()
     valid_passwords = []
+    password_items = {}  # To track password -> item mapping
 
     # Check if file exists
     if not os.path.exists('binary_password.json'):
@@ -202,16 +209,16 @@ def start_recording_knocks():
     data = load_binary_database()
 
     for item in data:
-
         if item["deletion_time"] is None:
-
             # If it is not deleted, check whether it is expired
             if item["expiration_time"] is None:
                 valid_passwords.append(item["password"])
+                password_items[item["password"]] = item
             else:
                 expiration_time = item["expiration_time"]
                 if expiration_time > current_time.strftime("%Y-%m-%d %H:%M:%S"):
                     valid_passwords.append(item["password"])
+                    password_items[item["password"]] = item
 
     if valid_passwords == []:
         password, knock_password = generate_binary_password()
@@ -228,9 +235,12 @@ def start_recording_knocks():
     binary_str, durations = decode_knocks(knocks)
 
     unlock = False
+    pass_info = None
     for password in valid_passwords:
-        unlock = check_binary_password(password, binary_str)
+        item = password_items.get(password)
+        unlock, current_pass_info = check_binary_password(password, binary_str, item)
         if unlock:
+            pass_info = current_pass_info
             data = load_binary_database()
 
             for item in data:
@@ -251,7 +261,7 @@ def start_recording_knocks():
     # plot_detection(audio_data, knocks, binary_str, 0)
     # print(f"Detection plot saved to binary_detection_ch1.png")
 
-    return unlock
+    return unlock, pass_info
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Binary knock detection system.')

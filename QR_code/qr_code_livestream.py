@@ -143,12 +143,17 @@ def verify_qr_code(password):
                 (entry['expiration_time'] is None or
                  entry['expiration_time'] > current_time)):
             print(f"Access granted for QR code ID: {entry['id']}")
+            pass_info = {
+                'id': entry['id'],
+                'name': entry['name'],
+                'type': entry['type']
+            }
             if entry['type'] == "one-time":
                 delete_qr_code(entry['id'])
-            return True
+            return True, pass_info
 
     print("Access denied: Invalid or expired QR code")
-    return False
+    return False, None
 
 class MJPEGFrameGrabber(threading.Thread):
     def __init__(self, url):
@@ -222,7 +227,7 @@ def scan_qr_code():
 def one_time_qr_scan(timeout=30):
     """
     Scan continuously until a QR code is detected, then return verification result
-    Returns True if valid QR, False if invalid QR or timeout reached
+    Returns (True, pass_info) if valid QR, (False, None) if invalid QR or timeout reached
     Uses threaded frame grabbing for low latency
     """
     grabber = MJPEGFrameGrabber(FASTAPI_STREAM_URL)
@@ -243,11 +248,11 @@ def one_time_qr_scan(timeout=30):
             decoded_objs = pyzbar.decode(frame)
             if decoded_objs:
                 qr_data = decoded_objs[0].data.decode('utf-8')
-                result = verify_qr_code(qr_data)
-                return result
+                result, pass_info = verify_qr_code(qr_data)
+                return result, pass_info
 
             time.sleep(0.01)
-        return False
+        return False, None
     finally:
         grabber.stop()
         cv2.destroyAllWindows()

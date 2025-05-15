@@ -33,13 +33,22 @@ class DoorUnlocker:
         time.sleep(2)  # Wait for Arduino to reset
         self.ser.reset_input_buffer()
 
-    def _log_action(self, action: str, action_type: str):
+    def _log_action(self, action: str, action_type: str, pass_info=None):
         """Log an action to the JSON file"""
+        # Format the action message to include pass info if available
+        if pass_info and "Door unlocked" in action:
+            action = f"Door unlocked by {pass_info['name']} (ID: {pass_info['id']})"
+            
         entry = {
             "action": action,
             "action_type": action_type,
             "action_time": datetime.now().isoformat()
         }
+        
+        # Add pass info if available
+        if pass_info:
+            entry["pass_id"] = pass_info['id']
+            entry["pass_name"] = pass_info['name']
 
         # Read existing data if file exists
         existing_data = []
@@ -59,16 +68,16 @@ class DoorUnlocker:
         with open(self.log_file, 'w') as f:
             json.dump(existing_data, f, indent=2)
 
-    def send_open_door(self, action_type: str):
+    def send_open_door(self, action_type: str, pass_info=None):
         """Send command to open the door"""
         self.ser.write(b"OPEN_DOOR\n")
-        self._log_action("Door unlocked", action_type)
+        self._log_action("Door unlocked", action_type, pass_info)
         time.sleep(1.5)  # Wait for door to open
 
-    def send_error(self, action_type: str):
+    def send_error(self, action_type: str, pass_info=None):
         """Send error signal"""
         self.ser.write(b"ERROR\n")
-        self._log_action("Access denied", action_type)
+        self._log_action("Access denied", action_type, pass_info)
         time.sleep(2)  # Wait for buzzer to finish playing
 
     def monitor_unlock_requests(self):
@@ -80,22 +89,24 @@ class DoorUnlocker:
 
                     if line == "UNLOCK_BY_QR_CODE":
                         print("QR Code unlock requested")
-                        if one_time_qr_scan():
-                            self.send_open_door("QR Code")
+                        unlock_result, pass_info = one_time_qr_scan()
+                        if unlock_result:
+                            self.send_open_door("QR Code", pass_info)
                         else:
                             self.send_error("QR Code")
 
                     elif line == "UNLOCK_BY_PATTERN":
                         print("Pattern unlock requested")
-                        if start_recording_knocks():
-                            self.send_open_door("Morse Code")
+                        unlock_result, pass_info = start_recording_knocks()
+                        if unlock_result:
+                            self.send_open_door("Morse Code", pass_info)
                         else:
                             self.send_error("Morse Code")
 
                     elif line == "UNLOCK_BY_VOICE":
                         print("Voice unlock requested")
                         # Add your voice recognition logic here
-                        # For now, we'll just open the door
+                        # For now, we'll just open the door with no pass info
                         self.send_open_door("Voice")
 
         except KeyboardInterrupt:

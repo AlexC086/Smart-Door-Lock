@@ -199,7 +199,7 @@ def start_recording_knocks():
         with open('binary_password.json', 'w') as f:
             json.dump({}, f)
 
-    data = load_database()
+    data = load_binary_database()
 
     for item in data:
 
@@ -231,7 +231,7 @@ def start_recording_knocks():
     for password in valid_passwords:
         unlock = check_binary_password(password, binary_str)
         if unlock:
-            data = load_database()
+            data = load_binary_database()
 
             for item in data:
                 # Delete the password after use

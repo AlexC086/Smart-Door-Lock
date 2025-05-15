@@ -89,7 +89,7 @@ async def get_qr_code(qr_id: int):
 
 @app.get("/update_action")
 async def load_action():
-    return load_action()
+    return load_log()
 
 if __name__ == '__main__':
     import uvicorn

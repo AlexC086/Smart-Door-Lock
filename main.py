@@ -54,8 +54,7 @@ async def add_entry(request: EditEntry):
         return add_binary_password(request.id, request.name, request.expiration_time, request.knock_password, request.password)
 
     elif request.method == "qr":
-        is_one_time = request.type == "one-time"
-        return create_qr_code(request.id, request.name, request.expiration_time, is_one_time)
+        return create_qr_code(request.id, request.name, request.expiration_time, request.type)
 
 @app.post("/edit_entry")
 async def edit_entry(request: EditEntry):
@@ -65,8 +64,8 @@ async def edit_entry(request: EditEntry):
         # Only pass non-null values
         name = request.name
         expiration_time = request.expiration_time
-        is_one_time = None if request.type is None else (request.type == "one-time")
-        return edit_qr_code(request.id, name, expiration_time, is_one_time)
+        type = request.type if request.type in ["one-time", "multiple-pass"] else None
+        return edit_qr_code(request.id, name, expiration_time, type)
 
 @app.post("/delete_entry")
 async def delete_entry(request: DeleteByID):

@@ -1262,6 +1262,37 @@ function App() {
                           console.error("Failed to load QR code");
                         }}
                       />
+                      <div style={{ textAlign: "center", marginTop: "15px" }}>
+                        <button 
+                          className="action-btn preview-btn"
+                          onClick={() => {
+                            // Fetch the QR code image as a blob
+                            fetch(`http://${RASPBERRY_PI_IP}:${DATA_PORT}/qr_code/${previewPass.id}`)
+                              .then(response => response.blob())
+                              .then(blob => {
+                                // Create an object URL for the blob
+                                const url = URL.createObjectURL(blob);
+                                
+                                // Create a link element to download the QR code
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = `qr-code-${previewPass.name}.png`;
+                                document.body.appendChild(link);
+                                link.click();
+                                
+                                // Clean up by removing the link and revoking the object URL
+                                setTimeout(() => {
+                                  document.body.removeChild(link);
+                                  URL.revokeObjectURL(url);
+                                }, 100);
+                              })
+                              .catch(error => console.error('Error downloading QR code:', error));
+                          }}
+                          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                        >
+                          Download QR Code
+                        </button>
+                      </div>
                     </div>
                     
                     <div className="qr-instructions">

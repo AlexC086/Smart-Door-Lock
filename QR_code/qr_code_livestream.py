@@ -328,7 +328,7 @@ def main():
             qr_id = int(input("Enter QR code ID to delete: "))
             delete_qr_code(qr_id)
         elif choice == 3:
-            scan_qr_code_threaded()
+            scan_qr_code()
         elif choice == 4:
             list_qr_codes()
         elif choice == 5:

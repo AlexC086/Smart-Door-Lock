@@ -38,7 +38,7 @@ def add_binary_password(id, name, expiration_time, knock_password, password):
         "name": name,
         "password": password,
         "knock_password": knock_password,
-        "creation_time": datetime.datetime.now().strftime('%Y-%m-%dT%H:%M'),
+        "creation_time": datetime.datetime.now().isoformat(),
         "expiration_time": expiration_time,
         "deletion_time": None,
     }
@@ -68,7 +68,7 @@ def delete_binary_password(id):
     for item in data:
         # Soft delete the password after use
         if item["id"] == id:
-            item["deletion_time"] = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M')
+            item["deletion_time"] = datetime.datetime.now().isoformat()
     update_binary_database(data)
 
     return [item for item in data if item["deletion_time"] is None]
@@ -204,7 +204,7 @@ def start_recording_knocks():
     if not os.path.exists('binary_password.json'):
         # Create the file with empty JSON object
         with open('binary_password.json', 'w') as f:
-            json.dump({}, f)
+            json.dump([], f)
 
     data = load_binary_database()
 
@@ -216,7 +216,7 @@ def start_recording_knocks():
                 password_items[item["password"]] = item
             else:
                 expiration_time = item["expiration_time"]
-                if expiration_time > current_time.strftime("%Y-%m-%d %H:%M:%S"):
+                if expiration_time > current_time.isoformat():
                     valid_passwords.append(item["password"])
                     password_items[item["password"]] = item
 
@@ -246,7 +246,8 @@ def start_recording_knocks():
             for item in data:
                 # Delete the password after use
                 if item["password"] == password:
-                    item["deletion_time"] = current_time.strftime("%Y-%m-%d %H:%M:%S")
+                    delete_binary_password(item["id"])
+                    break
 
             break
 

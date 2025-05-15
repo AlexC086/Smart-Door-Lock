@@ -87,7 +87,7 @@ async def get_qr_code(qr_id: int):
     
     return FileResponse(qr_path)
 
-@app.get("/get_action")
+@app.get("/load_action")
 async def load_action():
     return load_log()
 

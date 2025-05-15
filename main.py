@@ -117,7 +117,7 @@ class LogFileHandler(FileSystemEventHandler):
         try:
             await self.websocket.send_json(current_log)
             print("[WEBSOCKET] Sent data to client")
-            time.sleep(0.2)
+            time.sleep(0.5)
         except Exception as e:
             # print(f"[DEBUG] Exception in send_updated_log: {e}")
             self.active = False

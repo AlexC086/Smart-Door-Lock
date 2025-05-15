@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 import qrcode
 
 # Configuration
-QR_DATABASE = "qr_codes.json"
-QR_CODE_DIR = "qr_codes"
+QR_DATABASE = os.path.join(os.path.dirname(__file__), "qr_codes.json")
+QR_CODE_DIR = os.path.join(os.path.dirname(__file__), "qr_codes")  # Directory to store QR code images
 PASSWORD_LENGTH = 32
 FASTAPI_STREAM_URL = "http://localhost:8080/video_feed"  # FastAPI stream endpoint
 
@@ -40,7 +40,7 @@ def generate_password():
     """Generate a secure random password"""
     return secrets.token_hex(PASSWORD_LENGTH)
 
-def generate_qr_code(data, qr_id):
+def generate_qr_code_image(data, qr_id):
     """Generate and save a QR code image"""
     filename = os.path.join(QR_CODE_DIR, f"qr_code_{qr_id}.png")
 
@@ -57,31 +57,28 @@ def generate_qr_code(data, qr_id):
     img.save(filename)
     return filename
 
-def create_qr_code(name=None, expiration_time=None, one_time=False):
+def create_qr_code(qr_id, name, expiration_time, type="one-time"):
     """Create a new QR code entry and generate QR image"""
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.now().isoformat()
     data = load_database()
-
-    # Get the next available ID
-    new_id = max([entry['id'] for entry in data], default=0) + 1
 
     # Generate password
     password = generate_password()
 
     # Create new entry
     new_entry = {
-        "id": new_id,
+        "id": qr_id,
         "name": name,
         "password": password,
         "creation_time": current_time,
         "expiration_time": expiration_time,
         "deletion_time": None,
-        "is_one_time": one_time,
-        "qr_code_file": f"qr_code_{new_id}.png"  # Store filename reference
+        "type": type,
+        "qr_code_file": f"qr_code_{qr_id}.png"  # Store filename reference
     }
 
     # Generate and save QR code
-    qr_filename = generate_qr_code(password, new_id)
+    qr_filename = generate_qr_code_image(password, qr_id)
 
     data.append(new_entry)
     save_database(data)
@@ -90,23 +87,56 @@ def create_qr_code(name=None, expiration_time=None, one_time=False):
     print(f"Password: {password}")
     print(f"QR code saved as: {qr_filename}\n")
 
+
+def edit_qr_code(qr_id, name=None, expiration_time=None, type=None):
+    """Edit an existing QR code entry"""
+    data = load_database()
+
+    for entry in data:
+        if entry['id'] == qr_id and entry['deletion_time'] is None:
+            if name is not None:
+                entry['name'] = name
+            if expiration_time is not None:
+                entry['expiration_time'] = expiration_time
+            if is_one_time is not None:
+                entry['is_one_time'] = is_one_time
+                entry['type'] = type
+
+            save_database(data)
+            return entry
+
+    return None  # QR code not found or already deleted
+
 def delete_qr_code(qr_id):
     """Mark a QR code as deleted (soft delete)"""
     data = load_database()
 
     for entry in data:
         if entry['id'] == qr_id and entry['deletion_time'] is None:
-            entry['deletion_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            entry['deletion_time'] = datetime.now().isoformat()
             save_database(data)
             print(f"QR code {qr_id} has been deleted (marked as inactive)")
-            return
+            return True
 
     print(f"QR code {qr_id} not found or already deleted")
+    return False
+
+def get_qr_code_path(qr_id):
+    """Get the path to a QR code image"""
+    data = load_database()
+
+    for entry in data:
+        if entry['id'] == qr_id and entry['deletion_time'] is None:
+            qr_file = entry.get('qr_code_file')
+            if qr_file:
+                return os.path.join(QR_CODE_DIR, qr_file)
+
+    return None  # QR code not found or already deleted
 
 def verify_qr_code(password):
     """Verify if a QR code is valid"""
     data = load_database()
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.now().isoformat()
 
     for entry in data:
         if (entry['password'] == password and
@@ -255,7 +285,7 @@ def set_expiration(qr_id, days):
                 entry['expiration_time'] = None
             else:
                 expire_date = datetime.now() + timedelta(days=days)
-                entry['expiration_time'] = expire_date.strftime("%Y-%m-%d %H:%M:%S")
+                entry['expiration_time'] = expire_date.isoformat()
 
             save_database(data)
             print(f"QR code {qr_id} expiration set to {days} days")
@@ -281,14 +311,19 @@ def main_menu():
 
 def main():
     initialize_database()
+    data = load_database()
 
     while True:
         choice = main_menu()
 
         if choice == 1:
-            name = input("Enter a name for this QR code (optional): ")
+            name = input("Enter a name for this QR code: ")
             one_time = input("Is this QR code a one-time pass? (yes/no): ").lower() == 'yes'
-            create_qr_code(name=name, one_time=one_time)
+            type = "one-time" if one_time else "multiple-pass"
+            # Get the next available ID
+            new_id = max([entry['id'] for entry in data], default=0) + 1
+            expiration_time = datetime.now() + timedelta(7)
+            create_qr_code(qr_id=new_id, name=name, expiration_time=expiration_time, type=type)
         elif choice == 2:
             qr_id = int(input("Enter QR code ID to delete: "))
             delete_qr_code(qr_id)

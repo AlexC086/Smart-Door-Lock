@@ -50,7 +50,8 @@ function App() {
   const [isManualMorseInput, setIsManualMorseInput] = useState(false)
   const [morseCreationStep, setMorseCreationStep] = useState(0) // 0: choose method, 1: inputting, 2: review
   const [previewPass, setPreviewPass] = useState(null) // For pass preview modal
-  
+  const [isLoading, setIsLoading] = useState(false); // Loading state
+
   // Function to reset Morse code related states
   const resetMorseStates = () => {
     setMorsePassword('');
@@ -78,10 +79,29 @@ function App() {
   
   // Enforce Morse code to be one-time pass only
   useEffect(() => {
-    if (activeMethod === 'morse' && editingPass && editingPass.type !== 'one-time') {
-      setEditingPass({...editingPass, type: 'one-time'});
+    if (activeMethod === 'morse' && editingPass) {
+      setEditingPass({
+        ...editingPass,
+        type: 'one-time'
+      });
     }
   }, [activeMethod, editingPass]);
+  
+  // Periodic database update for QR code passes (every 30 seconds)
+  useEffect(() => {
+    if (showManageModal && activeMethod === 'qr') {
+      // Initial fetch when modal opens
+      update_database();
+      
+      // Set up periodic updates
+      const intervalId = setInterval(() => {
+        update_database();
+      }, 30000); // 30 seconds
+      
+      // Clean up on unmount or when modal closes
+      return () => clearInterval(intervalId);
+    }
+  }, [showManageModal, activeMethod]);
   
   // Get method details based on activeMethod
   const getMethodDetails = () => {
@@ -226,6 +246,7 @@ function App() {
   /* APIs */
   const update_database = async () => {
     try {
+      setIsLoading(true);
       const response = await fetch('http://localhost:8000/update_database', {
         method: 'POST',
         headers: {
@@ -246,19 +267,38 @@ function App() {
             expiryTime: item.expiration_time,
             morsePassword: item.knock_password,
             binaryPassword: item.password,
-            knockPassword: item.knock_password.substring(0, morsePassword.length-1),
+            knockPassword: item.knock_password.substring(0, item.knock_password.length-1),
           }));
 
           setMorsePasses(newPasses);
+        }          // Update QR code database
+        else if (activeMethod === "qr") {
+          const newPasses = data.map(item => ({
+            id: item.id,
+            name: item.name,
+            type: item.type,
+            expiryTime: item.expiration_time,
+          }));
+          
+          setQrPasses(newPasses);
+          
+          // Update next QR ID based on the highest ID in the database
+          if (newPasses.length > 0) {
+            const highestId = Math.max(...newPasses.map(pass => pass.id));
+            setNextQrId(highestId + 1);
+          }
         }
       }
     } catch (error) {
-      console.error('Error deleting Morse code:', error);
+      console.error('Error updating database:', error);
+    } finally {
+      setIsLoading(false);
     }
   }
 
   const add_entry_in_db = async (passtoAdd) => {
     try {
+      setIsLoading(true);
       const response = await fetch('http://localhost:8000/add_entry', {
         method: 'POST',
         headers: {
@@ -281,40 +321,66 @@ function App() {
         await update_database();
       }
     } catch (error) {
-      console.error('Error deleting entry:', error);
+      console.error('Error adding entry:', error);
+    } finally {
+      setIsLoading(false);
     }
   }
 
   const edit_entry_in_db = async (passtoEdit) => {
     try {
+      setIsLoading(true);
+      // Find the original pass to compare with
+      let originalPass;
+      if (activeMethod === 'qr') {
+        originalPass = qrPasses.find(pass => pass.id === passtoEdit.id);
+      } else if (activeMethod === 'morse') {
+        originalPass = morsePasses.find(pass => pass.id === passtoEdit.id);
+      } else if (activeMethod === 'voice') {
+        originalPass = voicePasses.find(pass => pass.id === passtoEdit.id);
+      }
+
+      // Compare and only send changed fields
+      const payload = {
+        id: passtoEdit.id,
+        name: originalPass && originalPass.name === passtoEdit.name ? null : passtoEdit.name,
+        type: originalPass && originalPass.type === passtoEdit.type ? null : passtoEdit.type,
+        expiration_time: originalPass && originalPass.expiryTime === passtoEdit.expiryTime ? null : passtoEdit.expiryTime,
+        method: activeMethod,
+      };
+
+      // Only include these two when it is morse code
+      if (activeMethod === "morse") {
+        payload.knock_password = originalPass && originalPass.morsePassword === passtoEdit.morsePassword 
+          ? null 
+          : passtoEdit.morsePassword;
+        
+        payload.password = originalPass && originalPass.binaryPassword === passtoEdit.binaryPassword 
+          ? null 
+          : passtoEdit.binaryPassword;
+      }
+
       const response = await fetch('http://localhost:8000/edit_entry', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          id: passtoEdit.id,
-          name: passtoEdit.name,
-          type: passtoEdit.type,
-          expiration_time: passtoEdit.expiryTime,
-          // Only include these two when it is morse code
-          ...(activeMethod === "morse" && {
-            knock_password: passtoEdit.morsePassword,
-            password: passtoEdit.binaryPassword
-          }),
-          method: activeMethod,
-        })});
+        body: JSON.stringify(payload)
+      });
 
       if (response.ok) {
         await update_database();
       }
     } catch (error) {
-      console.error('Error deleting entry:', error);
+      console.error('Error editing entry:', error);
+    } finally {
+      setIsLoading(false);
     }
   }
 
   const delete_entry_in_db = async (id) => {
     try {
+      setIsLoading(true);
       const response = await fetch('http://localhost:8000/delete_entry', {
         method: 'POST',
         headers: {
@@ -326,10 +392,12 @@ function App() {
         })});
 
       if (response.ok) {
-          await update_database();
+        await update_database();
       }
     } catch (error) {
       console.error('Error deleting entry:', error);
+    } finally {
+      setIsLoading(false);
     }
   }
   /* End of APIs */
@@ -341,8 +409,7 @@ function App() {
     // For Morse code passes, calculate binary password and keep the knock_password
     if (activeMethod === 'morse' && morsePassword) {
       const binaryPassword = convertMorseToBinary(morsePassword);
-      const knockPassword = morsePassword.substring(0, morsePassword.length-1); // Everything except the last dot
-      
+      const knockPassword = morsePassword.substring(0, morsePassword.length-1);      
       passToAdd = {
         ...pass,
         morsePassword: morsePassword,
@@ -355,17 +422,14 @@ function App() {
       console.log('Knock password:', knockPassword);
     }
 
-    // Add to appropriate pass list based on active method
+    // Add to database via API
     if (activeMethod === 'qr') {
-      setQrPasses([...qrPasses, passToAdd]);
-      setNextQrId(nextQrId + 1); // Increment the next ID
+      add_entry_in_db(passToAdd);
     } else if (activeMethod === 'morse') {
-      setMorsePasses([...morsePasses, passToAdd]);
-      setNextMorseId(nextMorseId + 1); // Increment the next ID
       add_entry_in_db(passToAdd);
     } else if (activeMethod === 'voice') {
       setVoicePasses([...voicePasses, passToAdd]);
-      setNextVoiceId(nextVoiceId + 1); // Increment the next ID
+      setNextVoiceId(nextVoiceId + 1);
     }
     
     setEditingPass(null);
@@ -381,14 +445,13 @@ function App() {
   const deletePass = (id) => {
     let passToDelete;
     
-    // Delete from appropriate pass list based on active method
+    // Find the pass to be deleted
     if (activeMethod === 'qr') {
       passToDelete = qrPasses.find(pass => pass.id === id);
-      setQrPasses(qrPasses.filter(pass => pass.id !== id));
+      delete_entry_in_db(id);
     } else if (activeMethod === 'morse') {
       passToDelete = morsePasses.find(pass => pass.id === id);
       delete_entry_in_db(id);
-      // setMorsePasses(morsePasses.filter(pass => pass.id !== id));
     } else if (activeMethod === 'voice') {
       passToDelete = voicePasses.find(pass => pass.id === id);
       setVoicePasses(voicePasses.filter(pass => pass.id !== id));
@@ -427,11 +490,10 @@ function App() {
 
   // Update pass
   const updatePass = (updatedPass) => {
-    // Update in appropriate pass list based on active method
+    // Update in database via API based on active method
     if (activeMethod === 'qr') {
-      setQrPasses(qrPasses.map(pass => pass.id === updatedPass.id ? updatedPass : pass));
+      edit_entry_in_db(updatedPass);
     } else if (activeMethod === 'morse') {
-      setMorsePasses(morsePasses.map(pass => pass.id === updatedPass.id ? updatedPass : pass));
       edit_entry_in_db(updatedPass);
     } else if (activeMethod === 'voice') {
       setVoicePasses(voicePasses.map(pass => pass.id === updatedPass.id ? updatedPass : pass));
@@ -543,6 +605,8 @@ function App() {
                   setEditingPass(null);
                   setIsCreatingPass(false);
                   setShowManageModal(true);
+                  // Fetch the latest QR codes from database
+                  setTimeout(() => update_database(), 100);
                 }}>Manage</button>
               </div>
             </div>
@@ -599,6 +663,11 @@ function App() {
             resetMorseStates();
           }}>
           <div className="manage-modal-content" onClick={e => e.stopPropagation()}>
+            {isLoading && (
+              <div className="loading-overlay">
+                <div className="spinner"></div>
+              </div>
+            )}
             <div className="manage-modal-header">
               <div className="manage-modal-title">
                 {activeMethod === 'morse' ? (
@@ -713,7 +782,10 @@ function App() {
                           <div className="col-actions">
                             <button 
                               className="action-btn preview-btn"
-                              onClick={() => setPreviewPass(pass)}
+                              onClick={() => {
+                                setPreviewPass(pass);
+                                setIsLoading(true);
+                              }}
                             >
                               Preview
                             </button>
@@ -1102,6 +1174,11 @@ function App() {
           <div className="manage-modal-content" 
             onClick={e => e.stopPropagation()} 
             style={{ maxWidth: '500px' }}>
+            {isLoading && (
+              <div className="loading-overlay">
+                <div className="spinner"></div>
+              </div>
+            )}
             <div className="manage-modal-header">
               <div className="manage-modal-title">
                 {activeMethod === 'morse' ? (
@@ -1162,6 +1239,33 @@ function App() {
                     <div className="morse-instructions">
                       <p>Remember this code to unlock the door.</p>
                       <p>For security reasons, this is a one-time pass.</p>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Show QR code if it's a QR pass */}
+                {activeMethod === 'qr' && (
+                  <div className="qr-preview-section">
+                    <h3>QR Code</h3>
+                    <div className="qr-code-display">
+                      <img 
+                        src={`http://localhost:8000/qr_code/${previewPass.id}`} 
+                        alt="QR Code for Access"
+                        style={{ maxWidth: "200px", margin: "20px auto", display: "block" }}
+                        onLoad={() => setIsLoading(false)}
+                        onError={() => {
+                          setIsLoading(false);
+                          console.error("Failed to load QR code");
+                        }}
+                      />
+                    </div>
+                    
+                    <div className="qr-instructions">
+                      <p>Scan this QR code with your phone to unlock the door.</p>
+                      <p>{previewPass.type === 'one-time' ? 
+                        "This is a one-time pass and will expire after use." : 
+                        "This is a multiple-use pass valid until expiry time."}
+                      </p>
                     </div>
                   </div>
                 )}

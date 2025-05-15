@@ -105,18 +105,19 @@ class LogFileHandler(FileSystemEventHandler):
         self.active = True
 
     def on_modified(self, event):
-        print(f"[DEBUG] on_modified called for: {event.src_path}")
+        # print(f"[DEBUG] on_modified called for: {event.src_path}")
         if os.path.abspath(event.src_path) == str(LOG.resolve()) and self.active:
-            print("[DEBUG] Log file modified, scheduling send_updated_log")
+            # print("[DEBUG] Log file modified, scheduling send_updated_log")
             self.loop.call_soon_threadsafe(asyncio.create_task, self.send_updated_log())
 
     async def send_updated_log(self):
-        print("[DEBUG] send_updated_log called, sending updated log to websocket")
+        # print("[DEBUG] send_updated_log called, sending updated log to websocket")
         current_log = load_log()
         try:
             await self.websocket.send_json(current_log)
+            # print("[WEBSOCKET] Sent data to client")
         except Exception as e:
-            print(f"[DEBUG] Exception in send_updated_log: {e}")
+            # print(f"[DEBUG] Exception in send_updated_log: {e}")
             self.active = False
 
 @app.websocket("/ws/actions")
@@ -127,6 +128,7 @@ async def websocket_action_log(websocket: WebSocket):
         # Initial send
         current_log = load_log()
         await websocket.send_json(current_log)
+        print("[WEBSOCKET] Sent data to client")
 
         # Set up file watcher with main event loop
         loop = asyncio.get_running_loop()

@@ -98,8 +98,7 @@ def edit_qr_code(qr_id, name=None, expiration_time=None, type=None):
                 entry['name'] = name
             if expiration_time is not None:
                 entry['expiration_time'] = expiration_time
-            if is_one_time is not None:
-                entry['is_one_time'] = is_one_time
+            if type is not None:
                 entry['type'] = type
 
             save_database(data)
@@ -144,7 +143,7 @@ def verify_qr_code(password):
                 (entry['expiration_time'] is None or
                  entry['expiration_time'] > current_time)):
             print(f"Access granted for QR code ID: {entry['id']}")
-            if entry['is_one_time']:
+            if entry['type'] == "one-time":
                 delete_qr_code(entry['id'])
             return True
 

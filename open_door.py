@@ -8,6 +8,7 @@ import os
 
 from QR_code.qr_code_livestream import one_time_qr_scan
 from Knock_pattern.binary_code import start_recording_knocks
+from Piwho.examples.live_speaker_recognition import voice_open_door
 
 LOG = 'door_actions.json'
 
@@ -108,9 +109,15 @@ class DoorUnlocker:
 
                     elif line == "UNLOCK_BY_VOICE":
                         print("Voice unlock requested")
-                        # Add your voice recognition logic here
-                        # For now, we'll just open the door with no pass info
-                        self.send_open_door("Voice")
+                        unlock_result = voice_open_door()
+                        pass_info = {
+                            'id': 1,
+                            'name': "Samuel"
+                        }
+                        if unlock_result:
+                            self.send_open_door("Voice", pass_info)
+                        else:
+                            self.send_error("Voice")
 
         except KeyboardInterrupt:
             print("\nStopping monitor...")

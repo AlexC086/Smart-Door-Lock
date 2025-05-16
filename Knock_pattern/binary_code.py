@@ -221,7 +221,7 @@ def start_recording_knocks():
                     password_items[item["password"]] = item
 
     if valid_passwords == []:
-        password, knock_password = generate_binary_password()
+        # password, knock_password = generate_binary_password()
         return False, None
         # print(f"\nKnock detection password: {knock_password}")
         # valid_passwords.append(password)

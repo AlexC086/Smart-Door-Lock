@@ -12,3 +12,16 @@ sudo apt-get install libqt4-test
 ```
 
 ## Start the live stream camera
+```bash
+python3 livestream.py
+```
+
+## Start FastAPI
+```bash
+python3 main.py
+```
+
+## Start unlock main program
+```bash
+python3 open_door.py
+```

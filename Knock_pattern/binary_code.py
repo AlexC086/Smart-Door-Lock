@@ -222,8 +222,9 @@ def start_recording_knocks():
 
     if valid_passwords == []:
         password, knock_password = generate_binary_password()
+        return False, None
         # print(f"\nKnock detection password: {knock_password}")
-        valid_passwords.append(password)
+        # valid_passwords.append(password)
 
     # Record audio
     audio_data = record_audio(duration=10, channels=1, device=None)
